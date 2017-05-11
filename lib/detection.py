@@ -8,19 +8,14 @@ from lib import feature_extraction as fe
 from lib.helpers import *
 from toolbox.draw_on_image import *
 
-def calc_win_width(y, ymin=420, ymax=720, btm_wd=360, top_wd=32):
-    # print( '%.2f'%((y-ymin)/(ymax-ymin)), (btm_wd-top_wd) , top_wd, int((y-ymin)/(ymax-ymin) * (btm_wd-top_wd) + top_wd))
-    # return int( (1-((ymax-y)/(ymax-ymin))) * (btm_wd-top_wd) + top_wd)
-    return int((y-ymin)/(ymax-ymin) * (btm_wd-top_wd) + top_wd)
-
 def horizontal_windows(img_shape, xmin=0, xmax=0, ymin=0, ymax=0,
-                 winwd=64, winht=64, xoverlap=0.5, yoverlap=0.5):
+                 winwd=64, winht=64, xyoverlap=(0.5, 0.5)):
     ''' Returns list of window coords to be slide across image horizontally
     '''
     xmax = xmax or img_shape[1]
     ymax = ymax or img_shape[0]
-    pxs_per_xstep = int(winwd * (1-xoverlap))
-    pxs_per_ystep = int(winht * (1-yoverlap))
+    pxs_per_xstep = int(winwd * (1-xyoverlap[0]))
+    pxs_per_ystep = int(winht * (1-xyoverlap[1]))
 
     # number of windows in x/y
     nx_windows = (xmax-xmin-winwd)//pxs_per_xstep + 1
@@ -39,13 +34,16 @@ def horizontal_windows(img_shape, xmin=0, xmax=0, ymin=0, ymax=0,
             windows.append(((x0, y0), (x1, y1)))
     return windows
 
-def slide_windows(img_shape, ymin=440, ymax=None, max_winht_pct=.5, xoverlap=0, yoverlap=0.8):
+def _calc_width(y, ymin=420, ymax=720, btm_wd=360, top_wd=32):
+    # print( '%.2f'%((y-ymin)/(ymax-ymin)), (btm_wd-top_wd) , top_wd, int((y-ymin)/(ymax-ymin) * (btm_wd-top_wd) + top_wd))
+    return int((y-ymin)/(ymax-ymin) * (btm_wd-top_wd) + top_wd)
+
+def slide_windows(img_shape, ymin=440, ymax=None, maxht=.5, xyoverlap=(0, 0.8), shifts=9):
     imght, imgwd = img_shape[:2]
-    max_winwd = int(max_winht_pct*imght)
-    # ymin = int(ymin_pct*imght) did not recog both cars in .2sec @1.2sec of test vid for pct=.61 or .62
+    max_winwd = int(maxht*imght) if 0<=maxht<=1 else int(maxht) 
+    # ymin = int(ymin_pct*imght) recog only 1 car in test1 for pct=.61 or .62
     ymax = ymax or imght
     shifted_collection = []
-    shifts = 10
 
     for shift in range(shifts):
         y = ymax
@@ -64,19 +62,19 @@ def slide_windows(img_shape, ymin=440, ymax=None, max_winht_pct=.5, xoverlap=0, 
 # 125 520
 # 97 496
 # 75 477
-            dead_step_x = int(winwd * (1-xoverlap) * shift/shifts)
+            dead_step_x = int(winwd * (1-xyoverlap[0]) * shift/shifts)
             dead_x_position = x + dead_step_x
-            y_step = int(winwd * (1-yoverlap))
+            y_step = int(winwd * (1-xyoverlap[1]))
 
             windows = horizontal_windows(img_shape, 
                 xmin=dead_x_position, xmax=imgwd-x, ymin=y-winwd, ymax=y, 
-                winwd=winwd, winht=winwd, xoverlap=xoverlap, yoverlap=yoverlap)
+                winwd=winwd, winht=winwd, xyoverlap=xyoverlap)
 
             y -= y_step
-            winwd = calc_win_width(y, ymin, ymax, btm_wd=max_winwd, top_wd=32)
-            x_width = calc_win_width(y,ymin,ymax, btm_wd=imgwd*15, top_wd=32*15)
+            winwd = _calc_width(y, ymin, ymax, btm_wd=max_winwd, top_wd=32)
+            xwidth= _calc_width(y, ymin, ymax, btm_wd=imgwd*15, top_wd=32*15)
 
-            x = 0 if x_width > imgwd else (imgwd - x_width)//2
+            x = 0 if xwidth > imgwd else (imgwd - xwidth)//2
 
             windows_collection.append(windows)
             i += 1
@@ -158,12 +156,12 @@ class Vehicle_Collection():
         self.abs_heatmap = None
         self.cars = []
         self.window_stripes = []
+        self.shifts = 6 # 5 recog only black car in test1 (xyoverlap=(.9,.8))
 
-    def find_hot_windows(self, img, model, xoverlap=0.9, yoverlap=0.8):
-        # xoverlap=.5, yoverlap=.5):
+    def find_hot_windows(self, img, model, xyoverlap=(0.9, 0.8)):
         if self.windows==None:
-            self.windows = slide_windows(img.shape, xoverlap=xoverlap, yoverlap=yoverlap)
-        self.circle_shift = (self.circle_shift +1)%10
+            self.windows = slide_windows(img.shape, xyoverlap=xyoverlap, shifts=self.shifts)
+        self.circle_shift = (self.circle_shift +1)%self.shifts
         self.height_shift = (self.height_shift +1)%len(self.windows[0])
         self.hot_wins = search_windows(img, 
             self.windows[self.circle_shift], 
