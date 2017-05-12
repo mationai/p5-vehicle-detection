@@ -84,14 +84,14 @@ def images_features(imgs, color_space='RGB', spatial_size=(32, 32),
         features.append(np.concatenate(file_features))
     return features
 
-def labeled_heat_windows(heatmap, threshold):
-    ''' Returns window bounding box coords from the heatmap image.
+def labeled_heat_bboxes(heatmap, threshold):
+    ''' Returns bounding box coords from the heatmap image.
     '''
     heat_thresh = npu.threshold(heatmap, threshold)
-    labels = label(heat_thresh)
+    labelsAry, nfeatures = label(heat_thresh)
     bboxes = []
-    for icar in range(1, labels[1]+1):
-        nonzero = (labels[0]==icar).nonzero()
+    for i in range(1, nfeatures+1):
+        nonzero = (labelsAry==i).nonzero()
         nonzeroy = np.array(nonzero[0])
         nonzerox = np.array(nonzero[1])
         bboxes.append(((np.min(nonzerox)-1, np.min(nonzeroy)-1),

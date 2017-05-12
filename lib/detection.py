@@ -8,14 +8,16 @@ from lib import feature_extraction as fe
 from lib.helpers import *
 from toolbox.draw_on_image import *
 
+x_,y_ = 0, 1
+
 def horizontal_windows(img_shape, xmin=0, xmax=0, ymin=0, ymax=0,
-                 winwd=64, winht=64, xyoverlap=(0.5, 0.5)):
+                 winwd=64, winht=64, overlap=(0.5, 0.5)):
     ''' Returns list of window coords to be slide across image horizontally
     '''
     xmax = xmax or img_shape[1]
     ymax = ymax or img_shape[0]
-    pxs_per_xstep = int(winwd * (1-xyoverlap[0]))
-    pxs_per_ystep = int(winht * (1-xyoverlap[1]))
+    pxs_per_xstep = int(winwd * (1-overlap[x_]))
+    pxs_per_ystep = int(winht * (1-overlap[y_]))
 
     # number of windows in x/y
     nx_windows = (xmax-xmin-winwd)//pxs_per_xstep + 1
@@ -34,63 +36,75 @@ def horizontal_windows(img_shape, xmin=0, xmax=0, ymin=0, ymax=0,
             windows.append(((x0, y0), (x1, y1)))
     return windows
 
-def _calc_width(y, ymin=420, ymax=720, btm_wd=360, top_wd=32):
-    # print( '%.2f'%((y-ymin)/(ymax-ymin)), (btm_wd-top_wd) , top_wd, int((y-ymin)/(ymax-ymin) * (btm_wd-top_wd) + top_wd))
-    return int((y-ymin)/(ymax-ymin) * (btm_wd-top_wd) + top_wd)
+def perspect_width(y, ymin=420, ymax=720, top_btm_wd=(32,320)):
+    yposition_ratio = (y-ymin)/(ymax-ymin)
+    width_diff = top_btm_wd[1] - top_btm_wd[0] 
+    return int(yposition_ratio*width_diff + top_btm_wd[0])
 
-def slide_windows(img_shape, ymin=440, ymax=None, maxht=.5, xyoverlap=(0, 0.8), shifts=9):
+def slide_windows(img_shape, ymin=440, ymax=None, maxht=.5, overlap=(0, 0.8), 
+    shifts=1, minwd=64, dbg=False):
+    ''' Returns strips of bounding box coords if shifts = 1.
+    If shifts > 1, returns list of strips of bboxes.
+    ymin: windows y start
+    ymax: None = image ht
+    maxht: max window ht in % of imght if <= 1, in pxs otherwise
+    minwd: min window wd in pxs
+    '''
     imght, imgwd = img_shape[:2]
     max_winwd = int(maxht*imght) if 0<=maxht<=1 else int(maxht) 
     # ymin = int(ymin_pct*imght) recog only 1 car in test1 for pct=.61 or .62
     ymax = ymax or imght
-    shifted_collection = []
+    strips_shifts = []
+    _min_topwd = 32
+    _max_topwd = 480
+    _topwd_ratio = int(_max_topwd/_min_topwd)
 
     for shift in range(shifts):
         y = ymax
         x = 0
         winwd = max_winwd
-        windows_collection = []
-        i = 0
+        windows_strips = []
 
-        while (winwd >= 64):
-            # print(winwd, y)
-# wd, y
-# 360 720
-# 276 649
-# 212 594
-# 163 552
-# 125 520
-# 97 496
-# 75 477
-            dead_step_x = int(winwd * (1-xyoverlap[0]) * shift/shifts)
-            dead_x_position = x + dead_step_x
-            y_step = int(winwd * (1-xyoverlap[1]))
+        while (winwd >= minwd):
+            # test1 print of overlap=(.9,.8), ymin=440,maxht=.5,shifts don't matter:
+            # wd: 360, 276, 212, 163, 125,  97,  75
+            #  y: 720, 649, 594, 552, 520, 496, 477
+            x0 = x + int(winwd * (1-overlap[x_]) * shift/shifts)
+            y_step = int(winwd * (1-overlap[y_]))
 
-            windows = horizontal_windows(img_shape, 
-                xmin=dead_x_position, xmax=imgwd-x, ymin=y-winwd, ymax=y, 
-                winwd=winwd, winht=winwd, xyoverlap=xyoverlap)
-
+            strip = horizontal_windows(img_shape, 
+                xmin=x0, xmax=imgwd-x, ymin=y-winwd, ymax=y, 
+                winwd=winwd, winht=winwd, overlap=overlap)
             y -= y_step
-            winwd = _calc_width(y, ymin, ymax, btm_wd=max_winwd, top_wd=32)
-            xwidth= _calc_width(y, ymin, ymax, btm_wd=imgwd*15, top_wd=32*15)
+            winwd = perspect_width(y, ymin, ymax, (_min_topwd, max_winwd))
+            maxwd = perspect_width(y, ymin, ymax, (_max_topwd, imgwd*_topwd_ratio))
+            x = 0 if maxwd > imgwd else (imgwd - maxwd)//2
 
-            x = 0 if xwidth > imgwd else (imgwd - xwidth)//2
+            windows_strips.append(strip)
+        strips_shifts.append(windows_strips)
 
-            windows_collection.append(windows)
-            i += 1
+    if dbg:
+        by_wds = np.array(strips_shifts).T
+        for by_wd in by_wds:
+            win0 = by_wd[0][0]
+            print('\nwidth %d:' % win0[1][0])
+            for s in by_wd:
+                for win in s:
+                    print(win)
 
-        shifted_collection.append(windows_collection)
-        # print(shifted_collection,'\n')
-    return shifted_collection
+    return strips_shifts if shifts>1 else strips_shifts[0]
 
-def search_windows(img, windows, clf, scaler, color_space='RGB',
-                   spatial_size=(32, 32), hist_bins=32,
-                   hist_range=(0, 256), orient=9,
-                   pix_per_cell=8, cell_per_block=2,
-                   hog_channel=0, spatial_feat=True,
-                   hist_feat=True, hog_feat=True):
-    on_windows = []
-    current_window_area = ((0,0),(0,0))
+def hot_windows(img, windows, clf, scaler, color_space='RGB',
+                spatial_size=(32, 32), hist_bins=32,
+                hist_range=(0, 256), orient=9,
+                pix_per_cell=8, cell_per_block=2,
+                hog_channel=0, spatial_feat=True,
+                hist_feat=True, hog_feat=True):
+    ''' aka "search_windows" in lesson solution.
+    Returns list of hot windows - windows which prediction is possitive for 
+    window in windows.
+    '''
+    result = []
     img = npu.RGBto(color_space, img)
 
     # 2) Iterate over all windows in the list
@@ -134,18 +148,18 @@ def search_windows(img, windows, clf, scaler, color_space='RGB',
             # 7) If positive (prediction == 1) then save the window
             if prediction == 1:
                 stripe_on_windows.append(window)
-        on_windows.append(stripe_on_windows)
+        result.append(stripe_on_windows)
     # 8) Return windows for positive detections
-    return on_windows
+    return result
 
-class Vehicle():
+class Car():
     def __init__(self, bbox):
         self.x0 = x0(bbox)
         self.x1 = x1(bbox)
         self.bboxes = [bbox]
         self.boxwd = self.x1 - self.x0
 
-class Vehicle_Collection():
+class CarsDetector():
     def __init__(self):
         self.img_shape = None
         self.windows = None
@@ -156,14 +170,14 @@ class Vehicle_Collection():
         self.abs_heatmap = None
         self.cars = []
         self.window_stripes = []
-        self.shifts = 6 # 5 recog only black car in test1 (xyoverlap=(.9,.8))
+        self.shifts = 6 # 5 recog only black car in test1 (overlap = (.9,.8))
 
-    def find_hot_windows(self, img, model, xyoverlap=(0.9, 0.8)):
+    def find_hot_windows(self, img, model, overlap=(0.9, 0.8)):
         if self.windows==None:
-            self.windows = slide_windows(img.shape, xyoverlap=xyoverlap, shifts=self.shifts)
+            self.windows = slide_windows(img.shape, overlap=overlap, shifts=self.shifts, dbg=True)
         self.circle_shift = (self.circle_shift +1)%self.shifts
         self.height_shift = (self.height_shift +1)%len(self.windows[0])
-        self.hot_wins = search_windows(img, 
+        self.hot_wins = hot_windows(img, 
             self.windows[self.circle_shift], 
             model.classifier, 
             model.X_scaler, 
@@ -172,7 +186,7 @@ class Vehicle_Collection():
     def analyze_current_stripe(self, process_image):
         for stripe in self.hot_wins:
             heatmap = npu.add_heat(process_image, bboxes=stripe)
-            self.window_stripes = self.window_stripes + fe.labeled_heat_windows(heatmap, 2)
+            self.window_stripes = self.window_stripes + fe.labeled_heat_bboxes(heatmap, 2)
 
         hot_wins = self.window_stripes
         self.cars = sorted(self.cars, key=lambda car: car.boxwd, reverse=True)
@@ -196,10 +210,10 @@ class Vehicle_Collection():
                             car_found = False
                         break
                 if car_found:
-                    cars_found.append(Vehicle(win))
+                    cars_found.append(Car(win))
             self.cars.extend(cars_found)
 
-    def identify_vehicles(self, process_image):
+    def label_cars(self, process_image):
         outimg = np.copy(process_image)
         ghost_cars = []
         for icar in range(len(self.cars)):
@@ -218,7 +232,7 @@ class Vehicle_Collection():
                 self.cars[icar].bboxes.pop(0)
             if len(self.cars[icar].bboxes) > 12:
                 heatmap = npu.add_heat(process_image, bboxes=self.cars[icar].bboxes)
-                label_windows = fe.labeled_heat_windows(heatmap, 5)
+                label_windows = fe.labeled_heat_bboxes(heatmap, 5)
                 if label_windows:
                     self.cars[icar].window = label_windows[0]
                 if self.cars[icar].boxwd > 20:

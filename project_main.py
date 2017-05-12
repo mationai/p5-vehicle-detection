@@ -12,9 +12,9 @@ from moviepy.editor import VideoFileClip
 
 
 def process_image(img):
-    vehicle_collection.find_hot_windows(img, model)
-    vehicle_collection.analyze_current_stripe(img)
-    return vehicle_collection.identify_vehicles(img)
+    detector.find_hot_windows(img, model)
+    detector.analyze_current_stripe(img)
+    return detector.label_cars(img)
 
 if __name__ == "__main__":
     t = time.time()
@@ -23,7 +23,7 @@ if __name__ == "__main__":
         X_scaler = joblib.load(picklefile.X_scaler),
         defaults = defaults,
     )
-    vehicle_collection = Vehicle_Collection()
+    detector = CarsDetector()
     heatmap_frame_collection = None
 
     #image = cv2.imread('./test_images/test6.jpg')
