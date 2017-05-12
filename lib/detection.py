@@ -36,7 +36,7 @@ def horizontal_windows(img_shape, xmin=0, xmax=0, ymin=0, ymax=0,
             windows.append(((x0, y0), (x1, y1)))
     return windows
 
-def perspect_width(y, ymin=420, ymax=720, top_btm_wd=(32,320)):
+def next_width(y, ymin=420, ymax=720, top_btm_wd=(32,320)):
     yposition_ratio = (y-ymin)/(ymax-ymin)
     width_diff = top_btm_wd[1] - top_btm_wd[0] 
     return int(yposition_ratio*width_diff + top_btm_wd[0])
@@ -56,41 +56,36 @@ def slide_windows(img_shape, ymin=440, ymax=None, maxht=.5, overlap=(0, 0.8),
     ymax = ymax or imght
     strips_shifts = []
     _min_topwd = 32
-    _max_topwd = 480
-    _topwd_ratio = int(_max_topwd/_min_topwd)
 
     _xses = []
     for shift in range(shifts):
         y = ymax
-        x = 0
         winwd = max_winwd
         windows_strips = []
 
         _xs = [shift]
         while (winwd >= minwd):
-            # test1 print of overlap=(.9,.8), ymin=440,maxht=.5,shifts don't matter:
+            # test1 print of overlap=(.9,.8), ymin=440,maxht=.5 (shifts d/c):
             # wd: 360, 276, 212, 163, 125,  97,  75
             #  y: 720, 649, 594, 552, 520, 496, 477
             x_step = int(winwd * (1-overlap[x_]))
-            x0 = x + int(x_step * shift/shifts)
-            # x0 = x + int(winwd * (1-overlap[x_]) * shift/shifts)
+            x = int(x_step * shift/shifts)
             y_step = int(winwd * (1-overlap[y_]))
 
+            _xs.append((winwd, x_step, y_step, x))
+
             strip = horizontal_windows(img_shape, 
-                xmin=x0, xmax=imgwd-x, ymin=y-winwd, ymax=y, 
+                xmin=x, xmax=imgwd, ymin=y-winwd, ymax=y, 
                 winwd=winwd, winht=winwd, overlap=overlap)
             y -= y_step
-            maxwd = perspect_width(y, ymin, ymax, (_max_topwd, imgwd*_topwd_ratio))
-            _xs.append((winwd, maxwd, x_step, x0, x))
-            winwd = perspect_width(y, ymin, ymax, (_min_topwd, max_winwd))
-            x = 0 if maxwd > imgwd else (imgwd - maxwd)//2
+            winwd = next_width(y, ymin, ymax, (_min_topwd, max_winwd))
 
             windows_strips.append(strip)
         strips_shifts.append(windows_strips)
         _xses.append(_xs)
 
     if dbg:
-        print('shift, (winwd, maxwd, x_step, x0, x):')
+        print('shift, (winwd, x_step, y_step, x):')
         for xs in _xses:
             print(xs)
         by_wds = np.array(strips_shifts).T
