@@ -57,13 +57,12 @@ def slide_windows(img_shape, ymin=440, ymax=None, maxht=.5, overlap=(0, 0.8),
     strips_shifts = []
     _min_topwd = 32
 
-    _xses = []
     for shift in range(shifts):
         y = ymax
         winwd = max_winwd
         windows_strips = []
 
-        _xs = [shift]
+        if dbg: print('shift:', shift)
         while (winwd >= minwd):
             # test1 print of overlap=(.9,.8), ymin=440,maxht=.5 (shifts d/c):
             # wd: 360, 276, 212, 163, 125,  97,  75
@@ -72,7 +71,7 @@ def slide_windows(img_shape, ymin=440, ymax=None, maxht=.5, overlap=(0, 0.8),
             x = int(x_step * shift/shifts)
             y_step = int(winwd * (1-overlap[y_]))
 
-            _xs.append((winwd, x_step, y_step, x))
+            if dbg: print('  winwd=%d, x,y step=(%d,%d), x=%d' % (winwd, x_step, y_step, x))
 
             strip = horizontal_windows(img_shape, 
                 xmin=x, xmax=imgwd, ymin=y-winwd, ymax=y, 
@@ -82,12 +81,8 @@ def slide_windows(img_shape, ymin=440, ymax=None, maxht=.5, overlap=(0, 0.8),
 
             windows_strips.append(strip)
         strips_shifts.append(windows_strips)
-        _xses.append(_xs)
 
     if dbg:
-        print('shift, (winwd, x_step, y_step, x):')
-        for xs in _xses:
-            print(xs)
         by_wds = np.array(strips_shifts).T
         for by_wd in by_wds:
             win0 = by_wd[0][0]
