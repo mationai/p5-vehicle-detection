@@ -59,31 +59,40 @@ def slide_windows(img_shape, ymin=440, ymax=None, maxht=.5, overlap=(0, 0.8),
     _max_topwd = 480
     _topwd_ratio = int(_max_topwd/_min_topwd)
 
+    _xses = []
     for shift in range(shifts):
         y = ymax
         x = 0
         winwd = max_winwd
         windows_strips = []
 
+        _xs = [shift]
         while (winwd >= minwd):
             # test1 print of overlap=(.9,.8), ymin=440,maxht=.5,shifts don't matter:
             # wd: 360, 276, 212, 163, 125,  97,  75
             #  y: 720, 649, 594, 552, 520, 496, 477
-            x0 = x + int(winwd * (1-overlap[x_]) * shift/shifts)
+            x_step = int(winwd * (1-overlap[x_]))
+            x0 = x + int(x_step * shift/shifts)
+            # x0 = x + int(winwd * (1-overlap[x_]) * shift/shifts)
             y_step = int(winwd * (1-overlap[y_]))
 
             strip = horizontal_windows(img_shape, 
                 xmin=x0, xmax=imgwd-x, ymin=y-winwd, ymax=y, 
                 winwd=winwd, winht=winwd, overlap=overlap)
             y -= y_step
-            winwd = perspect_width(y, ymin, ymax, (_min_topwd, max_winwd))
             maxwd = perspect_width(y, ymin, ymax, (_max_topwd, imgwd*_topwd_ratio))
+            _xs.append((winwd, maxwd, x_step, x0, x))
+            winwd = perspect_width(y, ymin, ymax, (_min_topwd, max_winwd))
             x = 0 if maxwd > imgwd else (imgwd - maxwd)//2
 
             windows_strips.append(strip)
         strips_shifts.append(windows_strips)
+        _xses.append(_xs)
 
     if dbg:
+        print('shift, (winwd, maxwd, x_step, x0, x):')
+        for xs in _xses:
+            print(xs)
         by_wds = np.array(strips_shifts).T
         for by_wd in by_wds:
             win0 = by_wd[0][0]
@@ -91,6 +100,23 @@ def slide_windows(img_shape, ymin=440, ymax=None, maxht=.5, overlap=(0, 0.8),
             for s in by_wd:
                 for win in s:
                     print(win)
+        colors = [
+         (0,255,0),
+         (0,215,0),
+         (0,175,0),
+         (0,135,0),
+         (0,100,0),
+         (0,70,0),
+         (0,40,0),
+         (0,10,0),
+        ]
+        for i,shift in enumerate(strips_shifts):
+            draw_image = np.zeros(img_shape)
+            # print(len(shift),'\n',i)
+            for j,stripe in enumerate(shift):
+                draw_image = draw_boxes(draw_image, stripe, colors[j])
+            # cv2.imshow('shifted_collection', draw_image)
+            cv2.imwrite('output_images/slide_windows%d.jpg'%i, draw_image)
 
     return strips_shifts if shifts>1 else strips_shifts[0]
 
