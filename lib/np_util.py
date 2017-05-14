@@ -3,6 +3,20 @@ import cv2
 from types import SimpleNamespace as SNS
 from skimage import feature as skFeat
 
+greens = [
+    (0,255,0),
+    (0,210,0),
+    (0,175,0),
+    (0,150,0),
+    (0,125,0),
+    (0,100,0),
+    (0,80,0),
+    (0,60,0),
+    (0,45,0),
+    (0,30,0),
+    (0,0,0),
+]
+
 def scale_255(M):
     return np.uint8(255*M/np.max(M))
 
@@ -136,25 +150,6 @@ def images_features(imgspath,
         ret.append(image_features(img, spatial_size, hist_bins, hist_ranges, hog_params))
     return ret
 
-def draw_boxes(img, bboxes=None, color=(0,0,255), thick=2, labels=None):
-    ''' Returns img with boxes drawn 
-    bboxes: list of bound boxes
-    color: color of box line
-    thick: line thickness
-    labels: (labelsAry, count) tuple from scipy.ndimage.measurements.label
-    '''
-    if labels != None:
-        for n in range(1, labels[1]+1):
-            nonzero = (labels[0]==n).nonzero()
-            nonzeroy = np.array(nonzero[0])
-            nonzerox = np.array(nonzero[1])
-            bbox = ((np.min(nonzerox), np.min(nonzeroy)), (np.max(nonzerox), np.max(nonzeroy)))
-            cv2.rectangle(img, bbox[0], bbox[1], color, thick)
-    else:
-        for box in bboxes:
-            cv2.rectangle(img, box[0], box[1], color, thick)
-    return img
-
 def add_heat(img=None, img_shape=None, mod_img=False, bboxes=[]):
     ''' Add heat to img 
     '''
@@ -165,44 +160,3 @@ def add_heat(img=None, img_shape=None, mod_img=False, bboxes=[]):
     for box in bboxes:
         out[box[0][1]:box[1][1], box[0][0]:box[1][0]] += 1
     return out
-
-def slide_window(imgwd, imght, xRange=[None, None], yRange=[0, 100],
-    yRangePct=[None, None], 
-    xy_window=(64, 64), 
-    xy_overlap=(0.5, 0.5),
-    ):
-    xRange[0] = xRange[0] or 0
-    xRange[1] = xRange[1] or imgwd
-
-    if yRangePct[0] != None:
-        yRange[0] = int(imght * yRangePct[0] / 100.)
-    if yRangePct[1] != None:
-        yRange[1] = int(imght * yRangePct[1] / 100.)
-
-    xspan = xRange[1] - xRange[0]
-    yspan = yRange[1] - yRange[0]
-
-    xPxsPerStep = np.int(xy_window[0] * (1 - xy_overlap[0]))
-    yPxsPerStep = np.int(xy_window[1] * (1 - xy_overlap[1]))
-
-    nx_windows = np.int(xspan / xPxsPerStep) - 1
-    ny_windows = np.int(yspan / yPxsPerStep) - 1
-
-    win_coords = []
-    for ys in range(ny_windows):
-        for xs in range(nx_windows):
-            x0 = xs * xPxsPerStep + xRange[0]
-            x1 = x0 + xy_window[0]
-            y0 = ys * yPxsPerStep + yRange[0]
-            y1 = y0 + xy_window[1]
-
-            if x1 > imgwd or y1 > imght:
-                continue
-            # window_list.append(((x0, y0), (x1, y1)))
-            win_coords.append(SNS(
-                x0=x0,
-                x1=x1,
-                y0=y0,
-                y1=y1,
-            ))
-    return win_coords

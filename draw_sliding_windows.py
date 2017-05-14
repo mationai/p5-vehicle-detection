@@ -1,25 +1,17 @@
 import cv2
 import numpy as np
-from lib.sliding_window import *
-from toolbox.draw_on_image import draw_boxes
+from lib.detection import slide_window_rows
+from toolbox import drawer
+from lib import np_util as npu 
 
-colors = [
- (0,255,0),
- (0,215,0),
- (0,175,0),
- (0,135,0),
- (0,100,0),
- (0,70,0),
- (0,40,0),
- (0,10,0),
-]
 image = cv2.imread('test_images/test1.jpg')
 shape = image.shape
+win_rows = slide_window_rows(shape)
 
-for i,shift in enumerate(slide_windows(shape)):
-    draw_image = np.copy(image)
-    # print(len(shift),'\n',i)
-    for j,stripe in enumerate(shift):
-        draw_image = draw_boxes(draw_image, stripe, colors[j])
-    # cv2.imshow('shifted_collection', draw_image)
-    cv2.imwrite('output_images/sliding_windows%d.jpg'%i, draw_image)
+print('%d rows of windows' % len(win_rows))
+img = drawer.draw_boxes_list(image, win_rows)
+cv2.imwrite('output_images/sliding_windows.jpg', img)
+
+for i,wins in enumerate(win_rows):
+    img = drawer.draw_boxes(image, wins)
+    cv2.imwrite('output_images/sliding_windows%d.jpg'%i, img)
