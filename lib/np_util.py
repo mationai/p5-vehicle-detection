@@ -153,10 +153,12 @@ def images_features(imgspath,
 def add_heat(img=None, img_shape=None, mod_img=False, bboxes=[]):
     ''' Add heat to img 
     '''
-    if mod_img:
+    if img_shape:
+        out = np.zeros(img_shape)
+    elif mod_img:
         out = img
     else:
-        out = np.zeros(img_shape) if img_shape else np.zeros_like(img[:,:,0])
+        out = np.zeros_like(img[:,:,0])
     for box in bboxes:
         out[box[0][1]:box[1][1], box[0][0]:box[1][0]] += 1
     return out

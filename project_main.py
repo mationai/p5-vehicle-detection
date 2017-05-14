@@ -21,7 +21,7 @@ detector = CarsDetector(model)
 
 def process_image(img):
     detector.detect_cars(img)
-    return detector.draw_detections(img)
+    return detector.detected_image(img)
     
 #image = cv2.imread('./test_images/test6.jpg')
 #image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -34,12 +34,14 @@ def process_image(img):
 video_output = './outputvid.mp4'
 # clip1 = VideoFileClip('./test1.mp4')
 # clip1 = VideoFileClip('./test2.mp4')
+clip1 = VideoFileClip('./projend.mp4')
 # clip1 = VideoFileClip('./test_video.mp4')
-clip1 = VideoFileClip('./project_video.mp4')
+# clip1 = VideoFileClip('./project_video.mp4')
 #clip1 = VideoFileClip('../harder_challenge_video.mp4')
 
 white_clip_1 = clip1.fl_image(process_image)  # NOTE: this function expects color images!!
 white_clip_1.write_videofile(video_output, audio=False)
 
 t2 = time.time()
-print(round(t2 - t, 2), 'Seconds to process video')
+m, s = divmod(t2 - t, 60)
+print("%d:%02d to process video" % (m, s))

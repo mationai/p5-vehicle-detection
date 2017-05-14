@@ -160,7 +160,7 @@ def rows_bboxes(img_shape, ymin=None, ymax=None, max_ht=.5,
     #         cv2.imwrite('output_images/slide_windows%d.jpg'%i, draw_image)
     return rows
 
-def heat_bboxes(heatmap, threshold):
+def get_bboxes(heatmap, threshold):
     ''' Returns bounding boxes of heat areas in heatmap image.
     '''
     heat_thresh = npu.threshold(heatmap, threshold)

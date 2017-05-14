@@ -6,12 +6,8 @@ import cv2
 from lib import np_util as npu
 from lib import feature_extraction as fe
 from lib.helpers import _x0,_x1,_y0,_y1
-# from toolbox.drawer import *
+from toolbox.drawer import add_debug_wins
 
-
-def bbox_coord(top_lf, btm_rt=None):
-    btm_rt = btm_rt or top_lf
-    return ((top_lf[0][0], top_lf[0][1]), (btm_rt[1][0], btm_rt[1][1]))
 
 def hot_rows_wins(img, window_rows, model, color_space='RGB', min_wd=64,
                 spatial_size=(32, 32), hist_bins=32,
@@ -30,8 +26,8 @@ def hot_rows_wins(img, window_rows, model, color_space='RGB', min_wd=64,
     # 2) Iterate over all windows in the list
     for row in window_rows:
         hot_wins = []
-        bbox = bbox_coord(row[0], row[-1])
-        roi = img[_y0(bbox):_y1(bbox), _x0(bbox):_x1(bbox)]
+        box = Box(top_left=row[0], btm_right=row[-1])
+        roi = img[box.y0:box.y1, box.x0:box.x1]
         ht, wd = roi.shape[:2]
         scale = min(ht, wd)/min_wd
         roi = cv2.resize(roi, (int(wd/scale), int(ht/scale)))
@@ -74,13 +70,26 @@ def hot_rows_wins(img, window_rows, model, color_space='RGB', min_wd=64,
     return outrows
 
 class Box():
-    def __init__(self, bbox):
-        self.x0 = _x0(bbox)
-        self.x1 = _x1(bbox)
+    def __init__(self, bbox=None, top_left=None, btm_right=None):
+        ''' Either bbox OR top_left (and/or) btm_right needs to be passed.
+        All are of ((x0,y0),(x1,y1))
+        '''
+        if bbox:
+            self.x0 = _x0(bbox)
+            self.x1 = _x1(bbox)
+            self.y0 = _y0(bbox)
+            self.y1 = _y1(bbox)
+        else:
+            btm_right = btm_right or top_left
+            self.x0 = _x0(top_left)
+            self.x1 = _x1(btm_right)
+            self.y0 = _y0(top_left)
+            self.y1 = _y1(btm_right)
         self.wd = self.x1 - self.x0
 
 class Car():
     def __init__(self, bbox):
+        ''' bbox is ((x0,y0),(x1,y1)) '''
         self.x0 = _x0(bbox)
         self.x1 = _x1(bbox)
         self.wins = [bbox]
@@ -92,6 +101,7 @@ class CarsDetector():
         self.rows = None
         self.cars = []
         self.model = model
+        self.add_debug = True
 
     def find_heat_boxes(self, img):
         if self.rows==None:
@@ -99,7 +109,7 @@ class CarsDetector():
         hot_wins = []
         for hot_row in hot_rows_wins(img, self.rows, self.model, **self.model.defaults):
             heatmap = npu.add_heat(img, bboxes=hot_row)
-            hot_wins += fe.heat_bboxes(heatmap, 2)
+            hot_wins += fe.get_bboxes(heatmap, threshold=2)
         return hot_wins
 
     def detect_cars(self, img):
@@ -130,8 +140,7 @@ class CarsDetector():
                     cars.append(Car(bbox))
             self.cars.extend(cars)
 
-    def draw_detections(self, img):
-        # self.detect_cars(img)
+    def detected_image(self, img):
         outimg = np.copy(img)
         ghost_cars = []
         for i,car in enumerate(self.cars):
@@ -148,9 +157,10 @@ class CarsDetector():
                 car.wins.pop(0)
             if len(car.wins) > 12:
                 heatmap = npu.add_heat(img, bboxes=car.wins)
-                hot_wins = fe.heat_bboxes(heatmap, 5)
+                hot_wins = fe.get_bboxes(heatmap, threshold=5)
                 if hot_wins:
                     heatbox = hot_wins[0]
                 if car.boxwd > 20:
                     outimg = cv2.rectangle(outimg, heatbox[0], heatbox[1], (0,255,0), 2)
         return outimg
+        # return add_debug_wins(outimg, dbg) if self.add_debug else outimg
