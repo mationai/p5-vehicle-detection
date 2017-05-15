@@ -6,7 +6,7 @@ import cv2
 from lib import np_util as npu
 from lib import feature_extraction as fe
 from lib.helpers import _x0,_x1,_y0,_y1
-from toolbox.drawer import add_debug_wins
+from toolbox.drawer import add_btm_win, add_debug_wins
 
 
 def hot_rows_wins(img, window_rows, model, color_space='RGB', min_wd=64,
@@ -95,13 +95,22 @@ class Car():
         self.wins = [bbox]
         self.boxwd = self.x1 - self.x0
 
+def car_wins_text(cars, txt=''):
+    return 'car windows count '+txt+' '.join([str(len(car.wins)) for car in cars])
+
 class CarsDetector():
     def __init__(self, model):
         self.img_shape = None
         self.rows = None
         self.cars = []
         self.model = model
-        self.add_debug = True
+        # self.btm_text = SNS(
+        #     cars_before = '',
+        #     cars_after = '',
+        #     cars_after2 = '',
+        #     # sideimgs = [],
+        #     # side_titles = [],
+        # )
 
     def find_heat_boxes(self, img):
         if self.rows==None:
@@ -143,14 +152,18 @@ class CarsDetector():
     def detected_image(self, img):
         outimg = np.copy(img)
         ghost_cars = []
+        btm_texts = [car_wins_text(self.cars, 'before: ')]
+        dbg_heats = []
+
         for i,car in enumerate(self.cars):
             if car.wins:
-                car.wins.pop(0)
-            if not car.wins:
+                car.wins.pop(0) # always pop 1st win for all car in self.cars
+            if not car.wins:    # if car.wins count=1 (0 after pop), add i to ghost_cars
                 ghost_cars.append(i)
 
         for ighost in ghost_cars[::-1]:
-            self.cars.pop(ighost)
+            self.cars.pop(ighost) # remove that 
+        btm_texts.append(car_wins_text(self.cars, 'midway:'))
 
         for i,car in enumerate(self.cars):
             while len(car.wins) > 40:
@@ -162,5 +175,6 @@ class CarsDetector():
                     heatbox = hot_wins[0]
                 if car.boxwd > 20:
                     outimg = cv2.rectangle(outimg, heatbox[0], heatbox[1], (0,255,0), 2)
-        return outimg
-        # return add_debug_wins(outimg, dbg) if self.add_debug else outimg
+                dbg_heats.append((np.dstack((heatmap,heatmap,heatmap))*255).astype('uint8'))
+        btm_texts.append(car_wins_text(self.cars, 'after:  '))
+        return add_debug_wins(outimg, btm_texts, dbg_heats, ['heatmap'])

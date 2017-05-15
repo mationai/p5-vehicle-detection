@@ -3,6 +3,19 @@ import numpy as np
 from toolbox import color_palette as cp
 
 
+font = cv2.FONT_HERSHEY_SIMPLEX
+fontsize = .5
+fontwd = 1
+linetype = cv2.LINE_AA 
+
+def textrow_ht_y0(fontsize=fontsize):
+    ''' Returns correct ht for text image rows. Needed as VideoFileClip.fl_image
+    fails to write corect video if result ht is odd
+    '''
+    ht = 18 + fontsize*20
+    y0 =  9 + fontsize*20
+    return (ht, y0)
+
 def draw_boxes(img, bboxes=[], colors=cp.greens, thick=2, return_copy=True):
     ''' Returns img with boxes drawn 
     bboxes: list of bounding box coords
@@ -22,60 +35,67 @@ def draw_boxes_list(img, bboxeslist=[], palette=cp.palette, thick=2, return_copy
         draw_boxes(out, bboxes, palette[i%colorslen], thick=thick, return_copy=False) 
     return out
 
-def draw_sidewins(imgs, title_texts):
-    ''' Take upto 3 wins, resize them smaller so they can be vertically stacked.
-    Returns a long image that is longer than each win's original ht such that 
-    its ht will equal to main image's ht plus another bottom debug window.
-    ''' 
-    xratio = 0.32
-    yratio = 0.34
-    vis = [cv2.resize(img, None,None,xratio,yratio,cv2.INTER_AREA) for img in imgs] 
-    ht, wd = vis[0].shape[:2]
-    title_ht = ht//5
-    txtpos = (10, title_ht-15)
-    size = 1 
-    fontwd = 2
-    linetype = cv2.LINE_AA 
-    titles = [np.zeros((title_ht, wd, 3)).astype(np.uint8) for img in imgs]
-    outimgs = []
-    for i,title in enumerate(titles):
-        title[:,:,0] = 255
-        title[:,:,1] = 255
-        title[:,:,2] = 255
-        cv2.putText(title,title_texts[i],txtpos,font,size,(0,0,0),fontwd,linetype)
-        outimgs.append(title)
-        outimgs.append(vis[i])
-    return np.vstack(outimgs)
-
-def add_btm_textwin(img, texts):
+def add_btm_win(img, texts, colors=[(255,255,255)]):
 # def addBtmText(img, offcent, radm, fitmsg, detectmsg):
 #     ''' Returns stacked main image and bottom texts
 #     ''' 
-#     txt_row_ht = 25
+    imght, imgwd = img.shape[:2]
+    if len(colors)==1 and len(texts) > 1:
+        colors *= len(texts) 
+    text_ht, y0 = textrow_ht_y0()
+    x = 8
+    btm = np.zeros((text_ht*len(texts), imgwd, 3)).astype(np.uint8)
+    for i,txt in enumerate(texts):
+        cv2.putText(btm,txt,(x,y0+(text_ht-2)*i),font,fontsize,colors[i],fontwd,linetype)
+    return np.vstack((img, btm))
 
-#     txtimg = np.zeros((out_ht-img_ht, img_wd, 3)).astype(np.uint8)
-#     radtxt = 'Curve Radius'
-#     postxt = 'Car off'
-#     toptxt = radtxt+'. '+postxt
-#     lfit = 'Lf Fit: %s' % fitmsg[L]
-#     rfit = 'Rt Fit: %s' % fitmsg[R]
-#     ldetect = 'Lf Detect: %s' % detectmsg
-#     rdetect = 'Rt Detect: %s' % detectmsg
-#     x,y = 10,20
-#     size = .5
-#     ht = int(size * 45)
-#     wd = 1
-#     cv2.putText(txtimg, toptxt,(x,y), font, size, (255,255,255), wd,linetype)
-#     cv2.putText(txtimg, lfit,   (x,y+ht*1),font,size,getColor(fitmsg[L]),wd,linetype)
-#     cv2.putText(txtimg, rfit,   (x,y+ht*2),font,size,getColor(fitmsg[R]),wd,linetype)
-#     cv2.putText(txtimg, ldetect,(x,y+ht*3),font,size,(255,255,255),wd,linetype)
-#     cv2.putText(txtimg, rdetect,(x,y+ht*4),font,size,(255,255,255),wd,linetype)
-#     return np.vstack((img, txtimg))
+def draw_sidewins(wins, titles, img_shape, win_shape, wins_cnt=3):
+    ''' Returns a vertically stacked image of up to maximgs reduced versions of wins.
+    wins: images to be vertically stacked, can be empty [].
+    titles: text titles for the wins. Can be a list of single title for all wins. 
+    img_shape: shape of main image. Its ht will be the ht of stacked images.
+    win_shape: shape of win images before size reduction.
+    ''' 
+    imght, imgwd = img_shape[:2]
+    winht_org, winwd_org = win_shape[:2]
+    aspect = winwd_org/winht_org 
+    text_ht, y0 = textrow_ht_y0()
 
-    return np.vstack((img, img))
+    _win_w_title_ht = imght/wins_cnt
+    _title_ht = text_ht + 5
+    _winht = _win_w_title_ht - _title_ht
+    winwd = int(_winht*aspect +.5)
+    winht = int(_winht +.5)
 
-def add_debug_wins(img, dbg):
-# def add_debug_wins(img, imgs, title_texts, btm_texts):
-    sidewin = draw_sidewins(dbg.imgs, dbg.title_texts)
-    mainwin = add_btm_textwin(img, dbg.btm_texts)
+    pxs_delta = imght - winht*wins_cnt - _title_ht*wins_cnt
+    delta = -1 if pxs_delta < 0 else 1
+    title_hts = [_title_ht]*wins_cnt
+    for i in range(abs(pxs_delta)):
+        title_hts[i] += delta
+
+    ratio = winht/winht_org
+    wins = [cv2.resize(img, None,None,ratio,ratio,cv2.INTER_AREA) for img in wins] 
+    if len(titles)==1:
+        titles = [titles[0]+' %d'%(i+1) for i in range(wins_cnt)] 
+    titleimgs = [
+        np.zeros((title_hts[i], winwd, 3)).astype(np.uint8) for i in range(wins_cnt)]
+    txtpos = (8, y0)
+
+    outimgs = []
+    for i,titleimg in enumerate(titleimgs):
+        titleimg[:,:,None] = 255
+        # titleimg[:,:,0] = 255
+        # titleimg[:,:,1] = 255
+        # titleimg[:,:,2] = 255
+        cv2.putText(titleimg,titles[i],txtpos,font,fontsize,(0,0,0),fontwd,linetype)
+        outimgs.append(titleimg)
+        if i < len(wins):
+            outimgs.append(wins[i])
+        else:
+            outimgs.append(np.zeros((winht, winwd, 3)).astype(np.uint8))
+    return np.vstack(outimgs)
+
+def add_debug_wins(img, texts, sideimgs, sidetitles):
+    mainwin = add_btm_win(img, texts)
+    sidewin = draw_sidewins(sideimgs, sidetitles, mainwin.shape, img.shape)
     return np.hstack((mainwin, sidewin))
