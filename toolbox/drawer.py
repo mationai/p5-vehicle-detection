@@ -76,6 +76,8 @@ def draw_sidewins(wins, titles, img_shape, win_shape, wins_cnt=3):
     for i in range(abs(pxs_delta)):
         lb_h[i] += delta
 
+    # for win in wins:
+    #     print(win.shape)
     wins = [cv2.resize(img, None,None,ratio,ratio,cv2.INTER_AREA) for img in wins] 
     lb_imgs = [np.zeros((lb_h[i], winwd, 3)).astype(np.uint8) for i in range(wins_cnt)]
 
@@ -93,9 +95,9 @@ def draw_sidewins(wins, titles, img_shape, win_shape, wins_cnt=3):
             out.append(np.zeros((winht, winwd, 3)).astype(np.uint8))
     return np.vstack(out)
 
-def add_debug_wins(img, texts, sideimgs, sidetitles):
-    mainwin = add_btm_win(img, texts)
-    sidewin_shape = sideimgs[0].shape if sideimgs else img.shape
-    sidewins = draw_sidewins(sideimgs, sidetitles, mainwin.shape, sidewin_shape)
+def add_debug_wins(img, btm_texts, sidewins, sidetitles, wins_cnt=3):
+    main = add_btm_win(img, btm_texts)
+    sidewin_shape = sidewins[0].shape if sidewins else img.shape
+    sidewins = draw_sidewins(sidewins, sidetitles, main.shape, sidewin_shape, wins_cnt)
     # sidewins = draw_sidewins(sideimgs, sidetitles, mainwin.shape, img.shape)
-    return np.hstack((mainwin, sidewins))
+    return np.hstack((main, sidewins))

@@ -9,7 +9,7 @@ from lib.helpers import _x0,_x1,_y0,_y1
 from toolbox.drawer import add_btm_win, add_debug_wins
 
 
-def hot_rows_wins(img, window_rows, model, color_space='RGB', min_wd=64,
+def hot_win_rows(img, window_rows, model, color_space='RGB', min_w=64,
                 spatial_size=(32, 32), hist_bins=32,
                 hist_range=(0, 256), orient=9,
                 pix_per_cell=8, cell_per_block=2,
@@ -29,7 +29,7 @@ def hot_rows_wins(img, window_rows, model, color_space='RGB', min_wd=64,
         box = Box(top_left=row[0], btm_right=row[-1])
         roi = img[box.y0:box.y1, box.x0:box.x1]
         ht, wd = roi.shape[:2]
-        scale = min(ht, wd)/min_wd
+        scale = min(ht, wd)/min_w
         roi = cv2.resize(roi, (int(wd/scale), int(ht/scale)))
 
         if hog_feat:
@@ -39,10 +39,10 @@ def hot_rows_wins(img, window_rows, model, color_space='RGB', min_wd=64,
             # 3) Extract the test window from original image
             x0 = int(_x0(window)/scale)
             # resized_win_start = int(window[0][0]/scale)
-            if wd < x0 + min_wd:
-                x0 = wd - min_wd
+            if wd < x0 + min_w:
+                x0 = wd - min_w
 
-            test_img = np.array(roi)[:,x0:x0+min_wd]
+            test_img = np.array(roi)[:,x0:x0+min_w]
             # 4) Extract features for that window using single_img_features()
             features = fe.image_features(test_img, color_space=None,
                                          spatial_size=spatial_size, hist_bins=hist_bins,
@@ -53,7 +53,7 @@ def hot_rows_wins(img, window_rows, model, color_space='RGB', min_wd=64,
             if hog_feat:
                 #print(window,scale,resized_win_start)
                 hog_x0 = int(x0/pix_per_cell)
-                nblocks = int(min_wd/pix_per_cell) - (cell_per_block-1)
+                nblocks = int(min_w/pix_per_cell) - (cell_per_block-1)
                 hog_feature = np.array(hog_features)[:,hog_x0:hog_x0+nblocks].ravel()
                 features.append(hog_feature)
 
@@ -98,12 +98,15 @@ class Car():
 def car_wins_text(cars, txt=''):
     return 'car windows count '+txt+' '.join([str(len(car.wins)) for car in cars])
 
-crop = {
+dbg_crop = {
     'top':350,
     'btm':10,
     'left':300,
     'right':340,
+    # 'left':200,
+    # 'right':100,
 }
+dbg_wins_cnt=3
 class CarsDetector():
     def __init__(self, model):
         self.img_shape = None
@@ -113,17 +116,23 @@ class CarsDetector():
 
     def find_heat_boxes(self, img):
         if self.rows==None:
-            self.rows = fe.rows_bboxes(img.shape, dbg=True)
+            self.rows = fe.sliding_box_rows(img.shape, dbg=True)
         hot_wins = []
-        for hot_row in hot_rows_wins(img, self.rows, self.model, **self.model.defaults):
+        self.dbg_wins = []
+        dbg_heat = np.zeros_like(img[:,:,0])
+        for hot_row in hot_win_rows(img, self.rows, self.model, **self.model.defaults):
             heatmap = npu.heatmap(hot_row, img)
+            dbg_heat= npu.heatmap(hot_row, dbg_heat, mod_img=True)
             hot_wins += fe.get_bboxes(heatmap, threshold=2)
+        hm = npu.crop(dbg_heat, **dbg_crop)
+        self.dbg_wins.append((np.dstack((hm,hm,hm))*7).astype('uint8'))
         return hot_wins
 
     def detect_cars(self, img):
         new_heats = self.find_heat_boxes(img)
         self.cars = sorted(self.cars, key=lambda car: car.boxwd, reverse=True)
 
+        # Move heats from new_heats to car.wins if condition checks. 
         # this loop won't run on 1st frame as self.cars is empty. 
         # "if new_heats" below will add cars to it if found
         for car in self.cars:
@@ -131,9 +140,10 @@ class CarsDetector():
                 box = Box(new_heats[i])
                 # print('car.x0', car.x0, '' <= box.x1 and car.x1 >= box.x0 and car.boxwd*1.5 > box.wd:
                 if car.x0 <= box.x1 and car.x1 >= box.x0 and car.boxwd*1.5 > box.wd:
-                    car.wins.append(new_heats.pop(i))
+                    car.wins.append(
+                        new_heats.pop(i))
         if new_heats:
-            self.new_heats = np.copy(img)
+            dbg_heat = np.copy(img)
             cars = []
             for bbox in new_heats:
                 heat = Box(bbox)
@@ -147,15 +157,16 @@ class CarsDetector():
                         break
                 if found:
                     cars.append(Car(bbox))
-                self.new_heats = cv2.rectangle(self.new_heats, bbox[0], bbox[1], (0,255,0), 2)
-            self.new_heats = npu.crop(self.new_heats, **crop)
+                dbg_heat = cv2.rectangle(dbg_heat, bbox[0], bbox[1], (0,255,0), 2)
+            self.dbg_wins.append(npu.crop(dbg_heat, **dbg_crop))
+            self.btm_text = '; '.join(['(%d,%d),(%d,%d)'%(_x0(b),_y0(b),_x1(b),_y1(b)) for b in new_heats])
             self.cars.extend(cars)
 
     def detected_image(self, img):
         out = np.copy(img)
         ghost_cars = []
-        btm_texts = [car_wins_text(self.cars, 'before: ')]
-        dbg_heats = [self.new_heats]
+        dbg_wins = self.dbg_wins
+        btm_texts = ['new heat coords: '+self.btm_text, car_wins_text(self.cars, 'before: ')]
 
         for i,car in enumerate(self.cars):
             if car.wins:
@@ -177,9 +188,9 @@ class CarsDetector():
                     heatbox = hot_wins[0]
                 if car.boxwd > 20:
                     out = cv2.rectangle(out, heatbox[0], heatbox[1], (0,255,0), 2)
-                hm = npu.crop(heatmap, **crop)
-                dbg_heats.append((np.dstack((hm,hm,hm))*10).astype('uint8'))
+                if len(dbg_wins) < dbg_wins_cnt:
+                    hm = npu.crop(heatmap, **dbg_crop)
+                    dbg_wins.append((np.dstack((hm,hm,hm))*7).astype('uint8'))
         btm_texts.append(car_wins_text(self.cars, 'after:  '))
-        return add_debug_wins(out, btm_texts, dbg_heats, 
-            ['new heats', 'heatmap 1', 'heatmap 2'])
-        # return add_debug_wins(out, btm_texts, dbg_heats, ['heatmap'])
+        return add_debug_wins(out, btm_texts, self.dbg_wins, 
+            ['new heat', 'detections', 'result heat 1', 'result heat 2'], dbg_wins_cnt)

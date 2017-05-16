@@ -84,54 +84,57 @@ def images_features(imgs, color_space='RGB', spatial_size=(32, 32),
         features.append(np.concatenate(file_features))
     return features
 
-def horizontal_bboxes(win_wd, step, y, xmax, xmin=0, win_ht=None):
+def horizontal_bboxes(win_w, step, y, xmax, xmin=0, win_h=None):
     ''' Returns list of bounding box coords that increments by step pixels horizontally
-    win_ht: set to win_wd if None
-    step: % of win_wd
+    win_h: set to win_w if None
+    step: % of win_w
     '''
     result = []
     x = xmin
-    y1 = y + win_wd if win_ht==None else y + win_ht
-    while int(x)+win_wd <= xmax:
-        result.append(((int(x), y), (int(x)+win_wd, y1)))
-        x += step*win_wd
+    y1 = y + win_w if win_h==None else y + win_h
+    while int(x)+win_w <= xmax:
+        result.append(((int(x), y), (int(x)+win_w, y1)))
+        x += step*win_w
     return result
 
-def next_width(y1, ht, ybase=440, top_wd=32, btm_wd=360):
-# def next_width(y1, ht, ybase=420, top_wd=32, btm_wd=360):
+def next_width(y1, ht, ybase=440, top_w=32, btm_w=360):
+# def next_width(y1, ht, ybase=420, top_w=32, btm_w=360):
     ''' Get next width for horizontal bboxes based on perspectives
     '''
     y_ratio = (y1-ybase)/(ht-ybase)
-    # print(y1, ht, y_ratio,btm_wd , top_wd, top_wd, int(y_ratio*(btm_wd - top_wd) + top_wd))
-    return int(y_ratio*(btm_wd - top_wd) + top_wd)
+    # print(y1, ht, y_ratio,btm_w , top_w, top_w, int(y_ratio*(btm_w - top_w) + top_w))
+    return int(y_ratio*(btm_w - top_w) + top_w)
 
-def rows_bboxes(img_shape, ymin=None, ymax=None, max_ht=.5, 
-    xstep=.05, ystep=.2, min_wd=64, dbg=False):
-    ''' Returns strips of bounding box coords if shifts = 1.
-    If shifts > 1, returns list of strips of bboxes.
+def sliding_box_rows(img_shape, ymin=None, ymax=None, max_h=.5, 
+    xstep=.05, ystep=.2, min_w=64, dbg=False):
+    ''' Returns rows of bounding box coords by sliding different size of windows
+    for each row.
+    Application is for vehicle detection, thus smaller windows row is near middle
+    of image and no rows of same size is repeated.
+    
     ymin: windows y start
     ymax: None = image ht
-    xstep, ystep: % of win_wd
-    max_ht: max window ht in % of imght if <= 1, in pxs otherwise
-    min_wd: min window wd in pxs
+    xstep, ystep: % of win_w
+    max_h: max window ht in % of imght if <= 1, in pxs otherwise
+    min_w: min window wd in pxs
     '''
-    img_ht, img_wd = img_shape[:2]
-    max_wd = int(max_ht*img_ht) if 0<=max_ht<=1 else int(max_ht) 
-    ymin = ymin if ymin!=None else img_ht - max_wd
-    # ymax = ymax or img_ht
-    win_wd = max_wd
+    img_h, img_w = img_shape[:2]
+    max_w = int(max_h*img_h) if 0<=max_h<=1 else int(max_h) 
+    ymin = ymin if ymin!=None else img_h - max_w
+    # ymax = ymax or img_h
+    win_w = max_w
     y = ymin  
-    y1 = ymin + win_wd
+    y1 = ymin + win_w
     rows = []
 
-    while (win_wd >= min_wd):
-        row = horizontal_bboxes(win_wd, xstep, y, img_wd)
-        # if dbg: print('wd:', win_wd, 'len', len(row), 'y', y)
+    while (win_w >= min_w):
+        row = horizontal_bboxes(win_w, xstep, y, img_w)
+        # if dbg: print('wd:', win_w, 'len', len(row), 'y', y)
 
         rows.append(row)
-        y1 -= int(win_wd * ystep)
-        win_wd = next_width(y1, img_ht)
-        y = y1 - win_wd
+        y1 -= int(win_w * ystep)
+        win_w = next_width(y1, img_h)
+        y = y1 - win_w
 
     # if dbg:
     #     by_wds = np.array(strips_shifts).T

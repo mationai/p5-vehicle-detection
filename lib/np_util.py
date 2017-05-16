@@ -163,7 +163,8 @@ def heatmap(bboxes, img=None, img_shape=None, mod_img=False):
     ''' Get heatmap from bounding boxes
     '''
     if img!=None and mod_img:
-        out = img
+        out = np.copy(img)
+        # out = img
     elif img_shape:
         out = np.zeros(img_shape)
     elif img!=None:
