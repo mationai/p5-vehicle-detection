@@ -24,6 +24,18 @@ def threshold(M, thres):
     M[M <= thres] = 0
     return M 
 
+def crop(img, top=0, btm=0, left=0, right=0):
+    if hasattr(img, 'crop') and callable(getattr(img, 'crop')):
+        # img is a PIL object
+        w,h = img.size[:2]
+        return img.crop((left, top, w-10, h-10))
+    elif hasattr(img, 'shape'):
+        # img is a numpy array, eg. via cv2.imread()
+        h,w = img.shape[:2]
+        return img[top:h-btm, left:w-right]
+    else:
+        raise ValueError('img type '+type(img)+' not expect')
+
 def BGRto(cs, img):
     # matplotlib.image.imread returns RGB
     if cs=='RGB': return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)

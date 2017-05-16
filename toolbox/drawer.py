@@ -95,5 +95,7 @@ def draw_sidewins(wins, titles, img_shape, win_shape, wins_cnt=3):
 
 def add_debug_wins(img, texts, sideimgs, sidetitles):
     mainwin = add_btm_win(img, texts)
-    sidewin = draw_sidewins(sideimgs, sidetitles, mainwin.shape, img.shape)
-    return np.hstack((mainwin, sidewin))
+    sidewin_shape = sideimgs[0].shape if sideimgs else img.shape
+    sidewins = draw_sidewins(sideimgs, sidetitles, mainwin.shape, sidewin_shape)
+    # sidewins = draw_sidewins(sideimgs, sidetitles, mainwin.shape, img.shape)
+    return np.hstack((mainwin, sidewins))

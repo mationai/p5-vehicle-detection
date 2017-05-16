@@ -98,6 +98,12 @@ class Car():
 def car_wins_text(cars, txt=''):
     return 'car windows count '+txt+' '.join([str(len(car.wins)) for car in cars])
 
+crop = {
+    'top':350,
+    'btm':10,
+    'left':300,
+    'right':340,
+}
 class CarsDetector():
     def __init__(self, model):
         self.img_shape = None
@@ -127,6 +133,7 @@ class CarsDetector():
                 if car.x0 <= box.x1 and car.x1 >= box.x0 and car.boxwd*1.5 > box.wd:
                     car.wins.append(new_heats.pop(i))
         if new_heats:
+            self.new_heats = np.copy(img)
             cars = []
             for bbox in new_heats:
                 heat = Box(bbox)
@@ -140,13 +147,15 @@ class CarsDetector():
                         break
                 if found:
                     cars.append(Car(bbox))
+                self.new_heats = cv2.rectangle(self.new_heats, bbox[0], bbox[1], (0,255,0), 2)
+            self.new_heats = npu.crop(self.new_heats, **crop)
             self.cars.extend(cars)
 
     def detected_image(self, img):
-        outimg = np.copy(img)
+        out = np.copy(img)
         ghost_cars = []
         btm_texts = [car_wins_text(self.cars, 'before: ')]
-        dbg_heats = []
+        dbg_heats = [self.new_heats]
 
         for i,car in enumerate(self.cars):
             if car.wins:
@@ -167,7 +176,10 @@ class CarsDetector():
                 if hot_wins:
                     heatbox = hot_wins[0]
                 if car.boxwd > 20:
-                    outimg = cv2.rectangle(outimg, heatbox[0], heatbox[1], (0,255,0), 2)
-                dbg_heats.append((np.dstack((heatmap,heatmap,heatmap))*10).astype('uint8'))
+                    out = cv2.rectangle(out, heatbox[0], heatbox[1], (0,255,0), 2)
+                hm = npu.crop(heatmap, **crop)
+                dbg_heats.append((np.dstack((hm,hm,hm))*10).astype('uint8'))
         btm_texts.append(car_wins_text(self.cars, 'after:  '))
-        return add_debug_wins(outimg, btm_texts, dbg_heats, ['heatmap'])
+        return add_debug_wins(out, btm_texts, dbg_heats, 
+            ['new heats', 'heatmap 1', 'heatmap 2'])
+        # return add_debug_wins(out, btm_texts, dbg_heats, ['heatmap'])
