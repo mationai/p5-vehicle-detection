@@ -104,20 +104,13 @@ class CarsDetector():
         self.rows = None
         self.cars = []
         self.model = model
-        # self.btm_text = SNS(
-        #     cars_before = '',
-        #     cars_after = '',
-        #     cars_after2 = '',
-        #     # sideimgs = [],
-        #     # side_titles = [],
-        # )
 
     def find_heat_boxes(self, img):
         if self.rows==None:
             self.rows = fe.rows_bboxes(img.shape, dbg=True)
         hot_wins = []
         for hot_row in hot_rows_wins(img, self.rows, self.model, **self.model.defaults):
-            heatmap = npu.add_heat(img, bboxes=hot_row)
+            heatmap = npu.heatmap(hot_row, img)
             hot_wins += fe.get_bboxes(heatmap, threshold=2)
         return hot_wins
 
@@ -169,12 +162,12 @@ class CarsDetector():
             while len(car.wins) > 40:
                 car.wins.pop(0)
             if len(car.wins) > 12:
-                heatmap = npu.add_heat(img, bboxes=car.wins)
+                heatmap = npu.heatmap(car.wins, img)
                 hot_wins = fe.get_bboxes(heatmap, threshold=5)
                 if hot_wins:
                     heatbox = hot_wins[0]
                 if car.boxwd > 20:
                     outimg = cv2.rectangle(outimg, heatbox[0], heatbox[1], (0,255,0), 2)
-                dbg_heats.append((np.dstack((heatmap,heatmap,heatmap))*255).astype('uint8'))
+                dbg_heats.append((np.dstack((heatmap,heatmap,heatmap))*10).astype('uint8'))
         btm_texts.append(car_wins_text(self.cars, 'after:  '))
         return add_debug_wins(outimg, btm_texts, dbg_heats, ['heatmap'])

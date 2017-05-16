@@ -60,9 +60,6 @@ def color_hist(img, bins=32, ranges=[(0,256)]*3):
     ch1 = np.histogram(img[:, :, 0], bins=bins, range=ranges[0])
     ch2 = np.histogram(img[:, :, 1], bins=bins, range=ranges[1])
     ch3 = np.histogram(img[:, :, 2], bins=bins, range=ranges[2])
-    # ch1 = np.histogram(img[:, :, 0], bins=nbins)
-    # ch2 = np.histogram(img[:, :, 1], bins=nbins)
-    # ch3 = np.histogram(img[:, :, 2], bins=nbins)
     chs = [ch1, ch2, ch3]
     return SNS(
         hist=np.concatenate([ch[0] for ch in chs]),
@@ -150,15 +147,17 @@ def images_features(imgspath,
         ret.append(image_features(img, spatial_size, hist_bins, hist_ranges, hog_params))
     return ret
 
-def add_heat(img=None, img_shape=None, mod_img=False, bboxes=[]):
-    ''' Add heat to img 
+def heatmap(bboxes, img=None, img_shape=None, mod_img=False):
+    ''' Get heatmap from bounding boxes
     '''
-    if img_shape:
-        out = np.zeros(img_shape)
-    elif mod_img:
+    if img!=None and mod_img:
         out = img
-    else:
+    elif img_shape:
+        out = np.zeros(img_shape)
+    elif img!=None:
         out = np.zeros_like(img[:,:,0])
+    else:
+        raise ValueError('img or img_shape is required')
     for box in bboxes:
         out[box[0][1]:box[1][1], box[0][0]:box[1][0]] += 1
     return out

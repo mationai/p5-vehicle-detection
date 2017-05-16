@@ -32,9 +32,9 @@ def process_image(img):
 #cv2.imwrite('../output_images/test2_applied_lane_lines.jpg', combo)
 
 video_output = './outputvid.mp4'
-clip1 = VideoFileClip('./test1.mp4')
+# clip1 = VideoFileClip('./test1.mp4')
 # clip1 = VideoFileClip('./test2.mp4')
-# clip1 = VideoFileClip('./projend.mp4')
+clip1 = VideoFileClip('./projend.mp4')
 # clip1 = VideoFileClip('./test_video.mp4')
 # clip1 = VideoFileClip('./project_video.mp4')
 #clip1 = VideoFileClip('../harder_challenge_video.mp4')
