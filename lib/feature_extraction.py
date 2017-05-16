@@ -105,13 +105,14 @@ def next_width(y1, ht, ybase=440, top_w=32, btm_w=360):
     # print(y1, ht, y_ratio,btm_w , top_w, top_w, int(y_ratio*(btm_w - top_w) + top_w))
     return int(y_ratio*(btm_w - top_w) + top_w)
 
-def sliding_box_rows(img_shape, ymin=None, ymax=None, max_h=.5, 
+def sliding_box_rows(img_shape, ymin=360, ymax=None, max_h=280, 
+# def sliding_box_rows(img_shape, ymin=None, ymax=None, max_h=.5, 
     xstep=.05, ystep=.2, min_w=64, dbg=False):
     ''' Returns rows of bounding box coords by sliding different size of windows
     for each row.
     Application is for vehicle detection, thus smaller windows row is near middle
     of image and no rows of same size is repeated.
-    
+
     ymin: windows y start
     ymax: None = image ht
     xstep, ystep: % of win_w

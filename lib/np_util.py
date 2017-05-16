@@ -159,18 +159,4 @@ def images_features(imgspath,
         ret.append(image_features(img, spatial_size, hist_bins, hist_ranges, hog_params))
     return ret
 
-def heatmap(bboxes, img=None, img_shape=None, mod_img=False):
-    ''' Get heatmap from bounding boxes
-    '''
-    if img!=None and mod_img:
-        out = np.copy(img)
-        # out = img
-    elif img_shape:
-        out = np.zeros(img_shape)
-    elif img!=None:
-        out = np.zeros_like(img[:,:,0])
-    else:
-        raise ValueError('img or img_shape is required')
-    for box in bboxes:
-        out[box[0][1]:box[1][1], box[0][0]:box[1][0]] += 1
-    return out
+    

@@ -8,6 +8,35 @@ fontsize = .5
 fontwd = 1
 linetype = cv2.LINE_AA 
 
+
+def heatmap(bboxes, img=None, shape=None):
+    ''' Draw bounding boxes as heatmap on copy of img or new image if shape given.
+    '''
+    if img!=None:
+        out = np.copy(img)
+    elif shape:
+        out = np.zeros(shape)
+    else:
+        raise ValueError('img or shape is required')
+    for box in bboxes:
+        out[box[0][1]:box[1][1], box[0][0]:box[1][0]] += 1
+    return out
+
+def heatmap_on_color(bboxes, img=None, shape=None):
+    ''' Draw bounding boxes as heatmap on copy of img or new image if shape given.
+    '''
+    if img!=None:
+        out = np.copy(img)
+    elif img_shape:
+        out = np.zeros(img_shape)
+    # elif img!=None:
+    #     out = np.zeros_like(img[:,:,0])
+    else:
+        raise ValueError('img or img_shape is required')
+    for box in bboxes:
+        out[box[0][1]:box[1][1], box[0][0]:box[1][0]] += 1
+    return out
+
 def textrow_ht_y0(fontsize=fontsize):
     ''' Returns correct ht for text image rows. Needed as VideoFileClip.fl_image
     fails to write corect video if result ht is odd
@@ -37,7 +66,7 @@ def draw_boxes_list(img, bboxeslist=[], palette=cp.palette, thick=2, return_copy
         draw_boxes(out, bboxes, palette[i%colorslen], thick=thick, return_copy=False) 
     return out
 
-def add_btm_win(img, texts, colors=[(255,255,255)]):
+def with_btm_win(img, texts, colors=[(255,255,255)]):
     ''' Returns stacked image of img and texts stacked vertically
     ''' 
     img_h, img_w = img.shape[:2]
@@ -50,7 +79,7 @@ def add_btm_win(img, texts, colors=[(255,255,255)]):
         cv2.putText(btm,txt,(x,y0+(txt_h-2)*i),font,fontsize,colors[i],fontwd,linetype)
     return np.vstack((img, btm))
 
-def draw_sidewins(wins, titles, img_shape, win_shape, wins_cnt=3):
+def side_wins(wins, titles, img_shape, win_shape, wins_cnt=3):
     ''' Returns a vertically stacked image of up to maximgs reduced versions of wins.
     wins: images to be resized and vertically stacked, can be empty [].
     titles: text titles for the wins. Can be a list of single title for all wins. 
@@ -95,9 +124,9 @@ def draw_sidewins(wins, titles, img_shape, win_shape, wins_cnt=3):
             out.append(np.zeros((winht, winwd, 3)).astype(np.uint8))
     return np.vstack(out)
 
-def add_debug_wins(img, btm_texts, sidewins, sidetitles, wins_cnt=3):
-    main = add_btm_win(img, btm_texts)
+def with_debug_wins(img, btm_texts, sidewins, sidetitles, wins_cnt=3):
+    main = with_btm_win(img, btm_texts)
     sidewin_shape = sidewins[0].shape if sidewins else img.shape
-    sidewins = draw_sidewins(sidewins, sidetitles, main.shape, sidewin_shape, wins_cnt)
+    sidewins = side_wins(sidewins, sidetitles, main.shape, sidewin_shape, wins_cnt)
     # sidewins = draw_sidewins(sideimgs, sidetitles, mainwin.shape, img.shape)
     return np.hstack((main, sidewins))

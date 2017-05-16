@@ -6,7 +6,7 @@ import cv2
 from lib import np_util as npu
 from lib import feature_extraction as fe
 from lib.helpers import _x0,_x1,_y0,_y1
-from toolbox.drawer import add_btm_win, add_debug_wins
+from toolbox import drawer as draw
 
 
 def hot_win_rows(img, window_rows, model, color_space='RGB', min_w=64,
@@ -121,8 +121,8 @@ class CarsDetector():
         self.dbg_wins = []
         dbg_heat = np.zeros_like(img[:,:,0])
         for hot_row in hot_win_rows(img, self.rows, self.model, **self.model.defaults):
-            heatmap = npu.heatmap(hot_row, img)
-            dbg_heat= npu.heatmap(hot_row, dbg_heat, mod_img=True)
+            heatmap = draw.heatmap(hot_row, shape=img.shape)
+            dbg_heat= draw.heatmap(hot_row, dbg_heat)
             hot_wins += fe.get_bboxes(heatmap, threshold=2)
         hm = npu.crop(dbg_heat, **dbg_crop)
         self.dbg_wins.append((np.dstack((hm,hm,hm))*7).astype('uint8'))
@@ -182,7 +182,7 @@ class CarsDetector():
             while len(car.wins) > 40:
                 car.wins.pop(0)
             if len(car.wins) > 12:
-                heatmap = npu.heatmap(car.wins, img)
+                heatmap = draw.heatmap(car.wins, shape=img.shape)
                 hot_wins = fe.get_bboxes(heatmap, threshold=5)
                 if hot_wins:
                     heatbox = hot_wins[0]
@@ -192,5 +192,5 @@ class CarsDetector():
                     hm = npu.crop(heatmap, **dbg_crop)
                     dbg_wins.append((np.dstack((hm,hm,hm))*7).astype('uint8'))
         btm_texts.append(car_wins_text(self.cars, 'after:  '))
-        return add_debug_wins(out, btm_texts, self.dbg_wins, 
+        return draw.with_debug_wins(out, btm_texts, self.dbg_wins, 
             ['new heat', 'detections', 'result heat 1', 'result heat 2'], dbg_wins_cnt)
