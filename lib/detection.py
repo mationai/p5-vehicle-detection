@@ -118,12 +118,11 @@ class CarsDetector():
         if self.rows==None:
             self.rows = fe.sliding_box_rows(img.shape, dbg=True)
         dbg_heat = np.copy(img)
-        dbg_overlay = np.copy(img)
         hot_wins = []
         for hot_row in hot_win_rows(img, self.rows, self.model, **self.model.defaults):
             heatmap = draw.heatmap(hot_row, shape=img.shape)
             hot_wins += fe.get_bboxes(heatmap, threshold=2)
-            dbg_heat = draw.heat_overlay(hot_row, dbg_heat, dbg_overlay)
+            dbg_heat = draw.heat_overlay(hot_row, dbg_heat)#, dbg_overlay)
 
         self.dbg_wins = [npu.crop(dbg_heat, **dbg.crop)]
         self.dbg_lbls = ['new unfiltered heats']
@@ -183,7 +182,6 @@ class CarsDetector():
         self.btm_txts.append(btm_text_gen(self.cars, 'filter1: '))
 
         dbg_heat = np.copy(img)
-        dbg_overlay = np.copy(img)
         for i,car in enumerate(self.cars):
             while len(car.wins) > 40:
                 car.wins.pop(0)
@@ -195,7 +193,7 @@ class CarsDetector():
                 if car.boxwd > 20:
                     out = cv2.rectangle(out, heatbox[0], heatbox[1], (0,255,0), 2)
                 if len(self.dbg_wins) < dbg.wins_cnt:
-                    dbg_heat = draw.heat_overlay(car.wins, dbg_heat, dbg_overlay)
+                    dbg_heat = draw.heat_overlay(car.wins, dbg_heat)
         self.dbg_wins.append(npu.crop(dbg_heat, **dbg.crop))
         self.dbg_lbls.append('detected cars')
         self.btm_txts.append(btm_text_gen(self.cars, 'filter2: '))
