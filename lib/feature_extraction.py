@@ -164,11 +164,11 @@ def sliding_box_rows(img_shape, ymin=360, ymax=None, max_h=280,
     #         cv2.imwrite('output_images/slide_windows%d.jpg'%i, draw_image)
     return rows
 
-def get_bboxes(heatmap, threshold):
+def bound_wins(heatmap, threshold):
     ''' Returns bounding boxes of heat areas in heatmap image.
     '''
-    heat_thresh = npu.threshold(heatmap, threshold)
-    labelsAry, nfeatures = label(heat_thresh)
+    filtered_heatmap = npu.threshold(heatmap, threshold)
+    labelsAry, nfeatures = label(filtered_heatmap)
     bboxes = []
     for i in range(1, nfeatures+1):
         nonzero = (labelsAry==i).nonzero()

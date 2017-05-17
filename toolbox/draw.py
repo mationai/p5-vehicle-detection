@@ -41,7 +41,7 @@ def textrow_ht_y0(fontsize=fontsize):
     y0 =  9 + int(fontsize*20)
     return (ht, y0)
 
-def draw_boxes(img, bboxes=[], colors=cp.greens, thick=2, return_copy=True):
+def boxes(img, bboxes=[], colors=cp.greens, thick=2, return_copy=True):
     ''' Returns img with boxes drawn 
     bboxes: list of bounding box coords
     thick: line thickness
@@ -52,14 +52,14 @@ def draw_boxes(img, bboxes=[], colors=cp.greens, thick=2, return_copy=True):
         cv2.rectangle(out, box[0], box[1], colors[i%colorslen], thick)
     return out
 
-def draw_boxes_list(img, bboxeslist=[], palette=cp.palette, thick=2, return_copy=True):
+def boxes_list(img, bboxeslist=[], palette=cp.palette, thick=2, return_copy=True):
     ''' Calls draw_boxes() on list of bounding boxes.
     '''
     out = np.copy(img) if return_copy else img
     colorslen = len(palette)
     for i,bboxes in enumerate(bboxeslist):
         j = i%colorslen
-        draw_boxes(out, bboxes, palette[i%colorslen], thick=thick, return_copy=False) 
+        boxes(out, bboxes, palette[i%colorslen], thick=thick, return_copy=False) 
     return out
 
 def with_btm_win(img, texts, colors=[(255,255,255)]):
