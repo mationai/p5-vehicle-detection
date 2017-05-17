@@ -103,9 +103,7 @@ dbg = SNS(
         'top':350,
         'btm':10,
         'left':300,
-        'right':340,
-        # 'left':200,
-        # 'right':100,
+        'right':0,
     },
     wins_cnt=3,
 )

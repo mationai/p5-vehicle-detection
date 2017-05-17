@@ -88,23 +88,21 @@ def side_wins(wins, img_shape, win_shape, titles=[''], wins_cnt=3):
     txt_h, y0 = textrow_ht_y0()
     txtpos = (8, y0)
 
-    _win_w_lbl_h = img_h/wins_cnt
-    _lb_h = txt_h + 5
-    _win_h = _win_w_lbl_h - _lb_h
-    winwd = int(_win_h*aspect +.5)
-    winht = int(_win_h +.5)
-    ratio = winht/org_win_h
+    desired_winlabel_h = img_h/wins_cnt
+    _label_h = txt_h + 5
+    win_h = int(desired_winlabel_h - _label_h +.5)
+    win_w = int(win_h*aspect +.5)
 
-    pxs_delta = img_h - winht*wins_cnt - _lb_h*wins_cnt
+    pxs_delta = img_h - win_h*wins_cnt - _label_h*wins_cnt
     delta = -1 if pxs_delta < 0 else 1
-    lb_h = [_lb_h]*wins_cnt
+    label_h = [_label_h]*wins_cnt
     for i in range(abs(pxs_delta)):
-        lb_h[i] += delta
+        label_h[i] += delta
 
-    # for win in wins:
-    #     print(win.shape)
-    wins = [cv2.resize(img, None,None,ratio,ratio,cv2.INTER_AREA) for img in wins] 
-    lb_imgs = [np.zeros((lb_h[i], winwd, 3)).astype(np.uint8) for i in range(wins_cnt)]
+    # for i,win in enumerate(wins):
+    #     print(win.shape, win_w, label_h[i])
+    wins = [cv2.resize(img,(win_w,win_h),interpolation=cv2.INTER_AREA) for img in wins] 
+    lb_imgs = [np.zeros((label_h[i], win_w, 3)).astype(np.uint8) for i in range(wins_cnt)]
 
     out = []
     for i,lb_img in enumerate(lb_imgs):
@@ -112,9 +110,11 @@ def side_wins(wins, img_shape, win_shape, titles=[''], wins_cnt=3):
         out.append(lb_img)
         if i < len(wins):
             out.append(wins[i])
-            title = titles[i-1] if len(titles)<=i else titles[i]
+            if len(titles) <= i:
+                titles[i] = titles[i-1]
+            title = titles[i]
         else:
-            out.append(np.zeros((winht, winwd, 3)).astype(np.uint8))
+            out.append(np.zeros((win_h, win_w, 3)).astype(np.uint8))
             title = ''
         cv2.putText(lb_img,title,txtpos,font,fontsize,(0,0,0),fontwd,linetype)
     return np.vstack(out)
