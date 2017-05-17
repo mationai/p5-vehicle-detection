@@ -99,24 +99,16 @@ def side_wins(wins, img_shape, win_shape, titles=[''], wins_cnt=3):
     for i in range(abs(pxs_delta)):
         label_h[i] += delta
 
-    # for i,win in enumerate(wins):
-    #     print(win.shape, win_w, label_h[i])
-    wins = [cv2.resize(img,(win_w,win_h),interpolation=cv2.INTER_AREA) for img in wins] 
     lb_imgs = [np.zeros((label_h[i], win_w, 3)).astype(np.uint8) for i in range(wins_cnt)]
-
     out = []
     for i,lb_img in enumerate(lb_imgs):
         lb_img[:,:,None] = 255
         out.append(lb_img)
-        if i < len(wins):
-            out.append(wins[i])
-            if len(titles) <= i:
-                titles[i] = titles[i-1]
-            title = titles[i]
-        else:
+        if wins[i]==None:
             out.append(np.zeros((win_h, win_w, 3)).astype(np.uint8))
-            title = ''
-        cv2.putText(lb_img,title,txtpos,font,fontsize,(0,0,0),fontwd,linetype)
+        else:
+            out.append(cv2.resize(wins[i],(win_w,win_h),interpolation=cv2.INTER_AREA))
+        cv2.putText(lb_img,titles[i],txtpos,font,fontsize,(0,0,0),fontwd,linetype)
     return np.vstack(out)
 
 def with_debug_wins(img, btm_texts, wins, win_titles, wins_cnt=3):

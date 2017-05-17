@@ -162,8 +162,10 @@ class CarsDetector():
                 dbg_heat = cv2.rectangle(dbg_heat, bbox[0], bbox[1], (0,255,0), 2)
             self.cars.extend(cars)
             self.dbg_wins.append(npu.crop(dbg_heat, **dbg.crop))
-            self.dbg_lbls.append('detections')
             self.btm_txts[0] += '; '.join(['(%d,%d),(%d,%d)'%(_x0(b),_y0(b),_x1(b),_y1(b)) for b in new_heats])
+        else:
+            self.dbg_wins.append(npu.crop(img, **dbg.crop))
+        self.dbg_lbls.append('detections')
 
     def detected_image(self, img):
         out = np.copy(img)
@@ -180,9 +182,9 @@ class CarsDetector():
             self.cars.pop(ighost) # remove that 
         self.btm_txts.append(btm_text_gen(self.cars, 'filter1: '))
 
+        dbg_heat = np.copy(img)
+        dbg_overlay = np.copy(img)
         for i,car in enumerate(self.cars):
-            dbg_heat = np.copy(img)
-
             while len(car.wins) > 40:
                 car.wins.pop(0)
             if len(car.wins) > 12:
@@ -193,10 +195,9 @@ class CarsDetector():
                 if car.boxwd > 20:
                     out = cv2.rectangle(out, heatbox[0], heatbox[1], (0,255,0), 2)
                 if len(self.dbg_wins) < dbg.wins_cnt:
-                    dbg_heat = draw.heat_overlay(car.wins, dbg_heat)
-                    self.dbg_wins.append(npu.crop(dbg_heat, **dbg.crop))
-
-                    self.dbg_lbls.append('detected cars')
+                    dbg_heat = draw.heat_overlay(car.wins, dbg_heat, dbg_overlay)
+        self.dbg_wins.append(npu.crop(dbg_heat, **dbg.crop))
+        self.dbg_lbls.append('detected cars')
         self.btm_txts.append(btm_text_gen(self.cars, 'filter2: '))
         # print(len(self.btm_txts))
         return draw.with_debug_wins(out, self.btm_txts, self.dbg_wins, self.dbg_lbls, dbg.wins_cnt)
