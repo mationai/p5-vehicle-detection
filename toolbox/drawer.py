@@ -10,7 +10,7 @@ linetype = cv2.LINE_AA
 
 
 def heatmap(bboxes, img=None, shape=None):
-    ''' Draw bounding boxes as heatmap on copy of img or new image if shape given.
+    ''' Draw heatmap (filled bounding boxes) on copy of img or new image of shape.
     '''
     if img!=None:
         out = np.copy(img)
@@ -22,19 +22,15 @@ def heatmap(bboxes, img=None, shape=None):
         out[box[0][1]:box[1][1], box[0][0]:box[1][0]] += 1
     return out
 
-def heatmap_on_color(bboxes, img=None, shape=None):
-    ''' Draw bounding boxes as heatmap on copy of img or new image if shape given.
+def heat_overlay(bboxes, img, overlay=None, color=(255,0,0), alpha=.01):
+    ''' Draw transparent heatmap (filled bounding boxes) on img.
     '''
-    if img!=None:
-        out = np.copy(img)
-    elif img_shape:
-        out = np.zeros(img_shape)
-    # elif img!=None:
-    #     out = np.zeros_like(img[:,:,0])
-    else:
-        raise ValueError('img or img_shape is required')
+    out = np.copy(img)
+    if overlay==None:
+        overlay = np.copy(img)
     for box in bboxes:
-        out[box[0][1]:box[1][1], box[0][0]:box[1][0]] += 1
+        cv2.rectangle(overlay, box[0], box[1], (0,255,0), cv2.FILLED)
+        out = cv2.addWeighted(overlay, alpha, out, 1-alpha, 0)
     return out
 
 def textrow_ht_y0(fontsize=fontsize):
@@ -79,7 +75,7 @@ def with_btm_win(img, texts, colors=[(255,255,255)]):
         cv2.putText(btm,txt,(x,y0+(txt_h-2)*i),font,fontsize,colors[i],fontwd,linetype)
     return np.vstack((img, btm))
 
-def side_wins(wins, titles, img_shape, win_shape, wins_cnt=3):
+def side_wins(wins, img_shape, win_shape, titles=[''], wins_cnt=3):
     ''' Returns a vertically stacked image of up to maximgs reduced versions of wins.
     wins: images to be resized and vertically stacked, can be empty [].
     titles: text titles for the wins. Can be a list of single title for all wins. 
@@ -110,23 +106,22 @@ def side_wins(wins, titles, img_shape, win_shape, wins_cnt=3):
     wins = [cv2.resize(img, None,None,ratio,ratio,cv2.INTER_AREA) for img in wins] 
     lb_imgs = [np.zeros((lb_h[i], winwd, 3)).astype(np.uint8) for i in range(wins_cnt)]
 
-    if len(titles)==1:
-        titles = [titles[0]+' %d'%(i+1) for i in range(wins_cnt)] 
-
     out = []
     for i,lb_img in enumerate(lb_imgs):
         lb_img[:,:,None] = 255
-        cv2.putText(lb_img,titles[i],txtpos,font,fontsize,(0,0,0),fontwd,linetype)
         out.append(lb_img)
         if i < len(wins):
             out.append(wins[i])
+            title = titles[i-1] if len(titles)<=i else titles[i]
         else:
             out.append(np.zeros((winht, winwd, 3)).astype(np.uint8))
+            title = ''
+        cv2.putText(lb_img,title,txtpos,font,fontsize,(0,0,0),fontwd,linetype)
     return np.vstack(out)
 
-def with_debug_wins(img, btm_texts, sidewins, sidetitles, wins_cnt=3):
+def with_debug_wins(img, btm_texts, wins, win_titles, wins_cnt=3):
     main = with_btm_win(img, btm_texts)
-    sidewin_shape = sidewins[0].shape if sidewins else img.shape
-    sidewins = side_wins(sidewins, sidetitles, main.shape, sidewin_shape, wins_cnt)
-    # sidewins = draw_sidewins(sideimgs, sidetitles, mainwin.shape, img.shape)
-    return np.hstack((main, sidewins))
+    win_shape = wins[0].shape if wins else img.shape
+    side = side_wins(wins, main.shape, win_shape, win_titles, wins_cnt)
+    # print(main.shape, side.shape)
+    return np.hstack((main, side))

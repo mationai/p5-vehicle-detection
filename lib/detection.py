@@ -95,18 +95,20 @@ class Car():
         self.wins = [bbox]
         self.boxwd = self.x1 - self.x0
 
-def car_wins_text(cars, txt=''):
+def btm_text_gen(cars, txt=''):
     return 'car windows count '+txt+' '.join([str(len(car.wins)) for car in cars])
 
-dbg_crop = {
-    'top':350,
-    'btm':10,
-    'left':300,
-    'right':340,
-    # 'left':200,
-    # 'right':100,
-}
-dbg_wins_cnt=3
+dbg = SNS(
+    crop={
+        'top':350,
+        'btm':10,
+        'left':300,
+        'right':340,
+        # 'left':200,
+        # 'right':100,
+    },
+    wins_cnt=3,
+)
 class CarsDetector():
     def __init__(self, model):
         self.img_shape = None
@@ -117,20 +119,22 @@ class CarsDetector():
     def find_heat_boxes(self, img):
         if self.rows==None:
             self.rows = fe.sliding_box_rows(img.shape, dbg=True)
+        dbg_heat = np.copy(img)
+        dbg_overlay = np.copy(img)
         hot_wins = []
-        self.dbg_wins = []
-        dbg_heat = np.zeros_like(img[:,:,0])
         for hot_row in hot_win_rows(img, self.rows, self.model, **self.model.defaults):
             heatmap = draw.heatmap(hot_row, shape=img.shape)
-            dbg_heat= draw.heatmap(hot_row, dbg_heat)
             hot_wins += fe.get_bboxes(heatmap, threshold=2)
-        hm = npu.crop(dbg_heat, **dbg_crop)
-        self.dbg_wins.append((np.dstack((hm,hm,hm))*7).astype('uint8'))
+            dbg_heat = draw.heat_overlay(hot_row, dbg_heat, dbg_overlay)
+
+        self.dbg_wins = [npu.crop(dbg_heat, **dbg.crop)]
+        self.dbg_lbls = ['new unfiltered heats']
         return hot_wins
 
     def detect_cars(self, img):
         new_heats = self.find_heat_boxes(img)
         self.cars = sorted(self.cars, key=lambda car: car.boxwd, reverse=True)
+        self.btm_txts = ['detection coords: ']
 
         # Move heats from new_heats to car.wins if condition checks. 
         # this loop won't run on 1st frame as self.cars is empty. 
@@ -158,15 +162,15 @@ class CarsDetector():
                 if found:
                     cars.append(Car(bbox))
                 dbg_heat = cv2.rectangle(dbg_heat, bbox[0], bbox[1], (0,255,0), 2)
-            self.dbg_wins.append(npu.crop(dbg_heat, **dbg_crop))
-            self.btm_text = '; '.join(['(%d,%d),(%d,%d)'%(_x0(b),_y0(b),_x1(b),_y1(b)) for b in new_heats])
             self.cars.extend(cars)
+            self.dbg_wins.append(npu.crop(dbg_heat, **dbg.crop))
+            self.dbg_lbls.append('detections')
+            self.btm_txts[0] += '; '.join(['(%d,%d),(%d,%d)'%(_x0(b),_y0(b),_x1(b),_y1(b)) for b in new_heats])
 
     def detected_image(self, img):
         out = np.copy(img)
         ghost_cars = []
-        dbg_wins = self.dbg_wins
-        btm_texts = ['new heat coords: '+self.btm_text, car_wins_text(self.cars, 'before: ')]
+        self.btm_txts.append(btm_text_gen(self.cars, 'detected: '))
 
         for i,car in enumerate(self.cars):
             if car.wins:
@@ -176,9 +180,11 @@ class CarsDetector():
 
         for ighost in ghost_cars[::-1]:
             self.cars.pop(ighost) # remove that 
-        btm_texts.append(car_wins_text(self.cars, 'midway:'))
+        self.btm_txts.append(btm_text_gen(self.cars, 'filter1: '))
 
         for i,car in enumerate(self.cars):
+            dbg_heat = np.copy(img)
+
             while len(car.wins) > 40:
                 car.wins.pop(0)
             if len(car.wins) > 12:
@@ -188,9 +194,11 @@ class CarsDetector():
                     heatbox = hot_wins[0]
                 if car.boxwd > 20:
                     out = cv2.rectangle(out, heatbox[0], heatbox[1], (0,255,0), 2)
-                if len(dbg_wins) < dbg_wins_cnt:
-                    hm = npu.crop(heatmap, **dbg_crop)
-                    dbg_wins.append((np.dstack((hm,hm,hm))*7).astype('uint8'))
-        btm_texts.append(car_wins_text(self.cars, 'after:  '))
-        return draw.with_debug_wins(out, btm_texts, self.dbg_wins, 
-            ['new heat', 'detections', 'result heat 1', 'result heat 2'], dbg_wins_cnt)
+                if len(self.dbg_wins) < dbg.wins_cnt:
+                    dbg_heat = draw.heat_overlay(car.wins, dbg_heat)
+                    self.dbg_wins.append(npu.crop(dbg_heat, **dbg.crop))
+
+                    self.dbg_lbls.append('detected cars')
+        self.btm_txts.append(btm_text_gen(self.cars, 'filter2: '))
+        # print(len(self.btm_txts))
+        return draw.with_debug_wins(out, self.btm_txts, self.dbg_wins, self.dbg_lbls, dbg.wins_cnt)
