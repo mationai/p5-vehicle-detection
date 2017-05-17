@@ -22,7 +22,7 @@ def heatmap(bboxes, img=None, shape=None):
         out[box[0][1]:box[1][1], box[0][0]:box[1][0]] += 1
     return out
 
-def heat_overlay(bboxes, img, overlay=None, color=(255,0,0), alpha=.07):
+def heat_overlay(bboxes, img, overlay=None, color=(255,0,0), alpha=.08):
     ''' Draw transparent heatmap (filled bounding boxes) on img.
     '''
     out = np.copy(img)

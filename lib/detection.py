@@ -128,7 +128,7 @@ class CarsDetector():
 
         self.dbg_wins = [npu.crop(dbg_heat, **dbg.crop)]
         self.side_txts = ['heat=new heats. box=win of heats']
-        self.btm_txts = ['%d new heatmap wins' % len(hot_wins)]
+        self.btm_txts = ['%d new heatmap windows' % len(hot_wins)]
         return hot_wins
 
     def remove_if_detected(self, hot_wins):
@@ -147,35 +147,39 @@ class CarsDetector():
         dbg_heat = np.copy(img)
 
         hot_wins = self.find_hot_wins(img)
+        new_detected = len(hot_wins)
         self.remove_if_detected(hot_wins)
         self.side_txts.append('heat=not prv-detected. box=added for next filtering')
 
-        new_detected = []
-        if hot_wins: # For those not moved to self.cars:
+        new_cars = []
+        if hot_wins: # For those not removed, group them into as little number 
+            # of cars as possible
             for bbox in hot_wins:
                 heat = Box(bbox)
                 found = True
-                for car in new_detected: 
-                # loop won't run on first heat as new_detected is empty.
-                # This loop compare each heat to those newly detected and add
-                #  them to their wins list instead of adding to new_detected if 
-                #  is similar.
+                for car in new_cars: 
+                # loop won't run on first heat as new_cars is empty.
                     if car.x0 <= heat.x1 and car.x1 >= heat.x0:
                         if car.boxwd*2 > heat.wd:
                             car.wins.append(bbox)
                             found = False
                         break
                 if found:
-                    new_detected.append(Car(bbox))
+                    new_cars.append(Car(bbox))
                     dbg_heat = cv2.rectangle(dbg_heat, bbox[0], bbox[1], (0,255,0), 2)
 
-            self.cars.extend(new_detected)
+            new_cars = [car for car in new_cars if len(car.wins) > 1]
+            self.cars.extend(new_cars)
             dbg_heat = draw.heat_overlay(hot_wins, dbg_heat, alpha=.2)
             self.dbg_wins.append(npu.crop(dbg_heat, **dbg.crop))
         else:
             self.dbg_wins.append(npu.crop(img, **dbg.crop))
-        self.btm_txts.append('%d new win not in previously detected' % len(hot_wins))
-        self.btm_txts.append('%d new win added for next filtering' % len(new_detected))
+        if new_cars:
+            win_cnts = 'with '+', '.join(['%d'%len(car.wins) for car in new_cars])+' windows '
+        else:
+            win_cnts = ''
+        self.btm_txts.append('%d removed (previously detected)' % (new_detected - len(hot_wins)))
+        self.btm_txts.append('%d cars %sadded' % (len(new_cars), win_cnts))
 
     def detected_image(self, img):
         out = np.copy(img)
@@ -185,8 +189,8 @@ class CarsDetector():
 
         for i,car in enumerate(self.cars):
             if car.wins:
-                car.wins.pop(0) # always pop 1st (prv frame's) win for all cars
-            if not car.wins:    # if no car wins after pop, add to remove list
+                car.wins.pop(0)   # always pop 1st (prv frame's) win for all cars
+            if len(car.wins) < 2: # if only 1 car wins after pop, add to remove list
                 to_remove.append(i)
         self.btm_txts.append('%d cars removed due to no windows found' % len(to_remove))
 

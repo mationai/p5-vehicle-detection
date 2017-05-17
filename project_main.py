@@ -33,9 +33,11 @@ def process_image(img):
 
 video_output = './outputvid.mp4'
 # clip1 = VideoFileClip('./test1.mp4')
-clip1 = VideoFileClip('./projend.mp4')
+# clip1 = VideoFileClip('./projend1.mp4') 
+# clip1 = VideoFileClip('./projend8.mp4')
+#project_video is 50secs, cut secs at exact secs gives good outputs
 # clip1 = VideoFileClip('./test_video.mp4')
-# clip1 = VideoFileClip('./project_video.mp4')
+clip1 = VideoFileClip('./project_video.mp4')
 #clip1 = VideoFileClip('../harder_challenge_video.mp4')
 
 white_clip_1 = clip1.fl_image(process_image)  # NOTE: this function expects color images!!
