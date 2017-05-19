@@ -111,11 +111,10 @@ def next_width(y1, ht, ybase=440, top_w=32, btm_w=360):
     # print(y1, ht, y_ratio,btm_w , top_w, top_w, int(y_ratio*(btm_w - top_w) + top_w))
     return int(y_ratio*(btm_w - top_w) + top_w)
 
-def sliding_box_rows(img_shape, ymin=360, ymax=None, max_h=320, 
-# def sliding_box_rows(img_shape, ymin=360, ymax=None, max_h=280, 
+def bbox_rows(img_shape, ymin=360, ymax=None, max_h=330, 
 # def sliding_box_rows(img_shape, ymin=None, ymax=None, max_h=.5, 
     # xstep=.1, ystep=.2, min_w=64, dbg=False):
-    xstep=.05, ystep=.2, min_w=64, dbg=False):
+    xstep=.05, ystep=.2, min_w=80, dbg=False):
     ''' Returns rows of bounding box coords by sliding different size of windows
     for each row.
     Application is for vehicle detection, thus smaller windows row is near middle
@@ -124,8 +123,10 @@ def sliding_box_rows(img_shape, ymin=360, ymax=None, max_h=320,
     ymin: windows y start
     ymax: None = image ht
     xstep, ystep: % of win_w
-    max_h: max window ht in % of imght if <= 1, in pxs otherwise
     min_w: min window wd in pxs
+    max_h: max window ht in % of imght if <= 1, in pxs otherwise
+     320 gives win sizes of: 320,238,183,140,108,83,64    
+     340 gives win sizes of: 340,256,197,151,116,89,69    
     '''
     img_h, img_w = img_shape[:2]
     max_w = int(max_h*img_h) if 0<=max_h<=1 else int(max_h) 
@@ -190,12 +191,13 @@ def ymin_ymax(rows):
             ymax = y1
     return ymin, ymax
 
-def bboxes_of_heat(heatmap, threshold):
+def bboxes_of_heat(heatmap, threshold, frame, dbg='b'):
     ''' Returns bounding boxes of heat areas in heatmap image.
     '''
     filtered_heatmap = npu.threshold(heatmap, threshold)
     labelsAry, nfeatures = label(filtered_heatmap)
     bboxes = []
+    print('frame',frame, dbg, nfeatures)
     for i in range(1, nfeatures+1):
         nonzero = (labelsAry==i).nonzero()
         nonzeroy = np.array(nonzero[0])

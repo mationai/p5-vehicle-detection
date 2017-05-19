@@ -21,7 +21,7 @@ def scale_255(M):
     return np.uint8(255*M/np.max(M))
 
 def threshold(M, thres):
-    M[M <= thres] = 0
+    M[M < thres] = 0
     return M 
 
 def crop(img, top=0, btm=0, left=0, right=0):

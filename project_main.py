@@ -23,8 +23,8 @@ def process_image(img):
     return detector.detected_image(img)
 
 # run_video = False
-# run_video = './test1.mp4'
-run_video = './prob6.mp4' 
+run_video = './test1.mp4'
+# run_video = './prob6.mp4' 
 # run_video = './project_video.mp4'
     
 if run_video:
