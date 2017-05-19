@@ -78,35 +78,6 @@ def color_hist(img, bins=32, ranges=[(0,256)]*3):
         bin_edges=np.concatenate([ch[1] for ch in chs]),
     )
 
-def hog(img,
-    orientations=8,
-    pxs_per_cell=8,
-    cells_per_blk=2,
-    channels=None, # 'all' or (0,1,2) for all
-    visualise=False,
-    feature_vector=False,
-    returnList=False):
-    ''' Histogram of Oriented Gradients Features channels
-    '''
-    if channels==None or len(channels)==1: 
-        return skFeat.hog(img if channels==None else img[:,:,channels[0]], 
-            orientations=orientations,
-            pixels_per_cell=(pxs_per_cell,pxs_per_cell),
-            cells_per_block=(cells_per_blk,cells_per_blk),
-            transform_sqrt=True, visualise=visualise, feature_vector=feature_vector
-        )
-    hog_features = []
-    chs = (0,1,2) if channels.lower()=='all' else channels
-    for ch in chs:
-        hog_features.append(skFeat.hog(img[:,:,ch], 
-            orientations=orientations,
-            pixels_per_cell=(pxs_per_cell,pxs_per_cell),
-            cells_per_block=(cells_per_blk,cells_per_blk),
-            transform_sqrt=True, visualise=visualise, feature_vector=feature_vector
-        ))
-    return hog_features if returnList else np.ravel(hog_features)
-    # return hog_features if returnList else np.array(hog_features)
-
 def hog_vis(img,
     orientations=8,
     pxs_per_cell=8,
@@ -159,4 +130,3 @@ def images_features(imgspath,
         ret.append(image_features(img, spatial_size, hist_bins, hist_ranges, hog_params))
     return ret
 
-    

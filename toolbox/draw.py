@@ -9,6 +9,11 @@ fontwd = 1
 linetype = cv2.LINE_AA 
 
 
+def rect(img, box, color, thick=2):
+    ''' box: ((x0,y0),(x1,y1))
+    '''
+    return cv2.rectangle(img, box[0], box[1], color, thick)
+
 def heatmap(bboxes, img=None, shape=None):
     ''' Draw heatmap (filled bounding boxes) on copy of img or new image of shape.
     '''

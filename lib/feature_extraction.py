@@ -1,14 +1,16 @@
 import numpy as np
-import cv2
+import cv2, sys
 from skimage.feature import hog
 from scipy.ndimage.measurements import label
 from lib import np_util as npu
+from lib.helpers import _x0,_x1,_y0,_y1
 
 
-# Define a function to return HOG features and visualization
-def get_hog(img, orient, pix_per_cell, cell_per_block, vis=False, feature_vec=True):
-    ''' Calls hog() by generating tuples for 2 of hog params
+def get_hog(img, orient, pix_per_cell, cell_per_block, vis=False, feature_vec=False):
+    ''' Ease calling of hog() by generating tuples from single value for 2 parameters.
     NOTE: hog returns a single value if vis=False, but tuple if vis=True
+    feature_vecture=True will return data as feature vector by calling
+     .ravel() on result.
     '''
     return hog(img, orientations=orient,
                     pixels_per_cell=(pix_per_cell, pix_per_cell),
@@ -16,45 +18,47 @@ def get_hog(img, orient, pix_per_cell, cell_per_block, vis=False, feature_vec=Tr
                     transform_sqrt=True,
                     visualise=vis, feature_vector=feature_vec)
 
-# Define a function to compute binned color features
 def bin_spatial(img, size=(32, 32)):
-    # Use cv2.resize().ravel() to create the feature vector
-    features = cv2.resize(img, size).ravel()
-    # Return the feature vector
-    return features
+    return cv2.resize(img, size).ravel()
 
-
-# Define a function to compute color histogram features
-# NEED TO CHANGE bins_range if reading .png files with mpimg!
 def color_hist(img, nbins=32, bins_range=(0, 256)):
-    # Compute the histogram of the color channels separately
-    channel1_hist = np.histogram(img[:, :, 0], bins=nbins, range=bins_range)
-    channel2_hist = np.histogram(img[:, :, 1], bins=nbins, range=bins_range)
-    channel3_hist = np.histogram(img[:, :, 2], bins=nbins, range=bins_range)
-    # Concatenate the histograms into a single feature vector
-    hist_features = np.concatenate((channel1_hist[0], channel2_hist[0], channel3_hist[0]))
-    # Return the individual histograms, bin_centers and feature vector
-    return hist_features
-
+    ''' Color histogram - Compute histogram of the color channels separately,
+     then concatenate them into a single feature vector
+    bins_range: NEEDS CHANGE if reading .png files with mpimg!
+    '''
+    ch1 = np.histogram(img[:, :, 0], bins=nbins, range=bins_range)
+    ch2 = np.histogram(img[:, :, 1], bins=nbins, range=bins_range)
+    ch3 = np.histogram(img[:, :, 2], bins=nbins, range=bins_range)
+    return np.concatenate((ch1[0], ch2[0], ch3[0]))
 
 def hog_features(img, orient=9, pix_per_cell=8, cell_per_block=2, hog_channel=0,
     vis=False, feature_vec=True):
+    ''' Histogram of Gradients features
+    Returns hog() features one or all channels 
+    If "ValueError: operands could not be broadcast together with shapes...",
+     it is likely get_hog() returns ravel() when it should for all channels.
+     So get_hog() is called with feature_vec=False and ravel() is only call
+     on the result if all channels.
+    For hog that is to be subsampled, this fn needs to be called with
+     feature_vec=False so subsamples can call ravel()
+    '''
     if hog_channel == 'ALL':
         hog_features = []
         for channel in range(img.shape[2]):
-            hog_features.extend(get_hog(img[:,:,channel], orient, 
+            hog_features.append(get_hog(img[:,:,channel], orient, 
                                         pix_per_cell, cell_per_block,
-                                        vis=vis, feature_vec=feature_vec))
+                                        vis=vis, feature_vec=False))
+        feats = np.array(hog_features)
+        return feats.ravel() if feature_vec else feats
     else:
-        hog_features = get_hog(img[:,:,hog_channel], orient,
+        return get_hog(img[:,:,hog_channel], orient,
                                         pix_per_cell, cell_per_block, 
                                         vis=vis, feature_vec=feature_vec)
-    return hog_features
 
-def image_features(img, color_space=None, spatial_size=(32, 32),
-                   hist_bins=32, orient=9,
-                   pix_per_cell=8, cell_per_block=2, hog_channel=0,
-                   spatial_feat=True, hist_feat=True, hog_feat=True):
+def image_features(img, color_space=None, spatial_size=(32, 32), hist_bins=32, 
+                   orient=9, pix_per_cell=8, cell_per_block=2, hog_channel=0,
+                   spatial_feat=True, hist_feat=True, hog_feat=True, 
+                   hog_feats=None, concat=False, dbg=False):
     ''' Extract features of an image
     '''
     out = []
@@ -64,9 +68,11 @@ def image_features(img, color_space=None, spatial_size=(32, 32),
         out.append(bin_spatial(img, size=spatial_size))
     if hist_feat:
         out.append(color_hist(img, nbins=hist_bins))
-    if hog_feat:
+    if hog_feats!=None:
+        out.append(hog_feats)
+    elif hog_feat:
         out.append(hog_features(img, orient, pix_per_cell, cell_per_block, hog_channel))
-    return out
+    return np.concatenate(out) if concat else out
 
 def images_features(imgs, color_space='RGB', spatial_size=(32, 32),
                     hist_bins=32, orient=9,
@@ -74,15 +80,15 @@ def images_features(imgs, color_space='RGB', spatial_size=(32, 32),
                     spatial_feat=True, hist_feat=True, hog_feat=True):
     ''' Extract features from a list of images
     '''
-    features = []
+    result = []
     for file in imgs:
         # Read in each one by one
-        img = npu.BGRto(color_space, cv2.imread(file))
-        file_features = image_features(img, color_space, spatial_size, hist_bins,
+        img = npu.BGRto('RGB', cv2.imread(file))
+        features = image_features(img, color_space, spatial_size, hist_bins,
             orient, pix_per_cell, cell_per_block, hog_channel, 
             spatial_feat, hist_feat, hog_feat)
-        features.append(np.concatenate(file_features))
-    return features
+        result.append(np.concatenate(features))
+    return result
 
 def horizontal_bboxes(win_w, step, y, xmax, xmin=0, win_h=None):
     ''' Returns list of bounding box coords that increments by step pixels horizontally
@@ -105,8 +111,10 @@ def next_width(y1, ht, ybase=440, top_w=32, btm_w=360):
     # print(y1, ht, y_ratio,btm_w , top_w, top_w, int(y_ratio*(btm_w - top_w) + top_w))
     return int(y_ratio*(btm_w - top_w) + top_w)
 
-def sliding_box_rows(img_shape, ymin=360, ymax=None, max_h=280, 
+def sliding_box_rows(img_shape, ymin=360, ymax=None, max_h=320, 
+# def sliding_box_rows(img_shape, ymin=360, ymax=None, max_h=280, 
 # def sliding_box_rows(img_shape, ymin=None, ymax=None, max_h=.5, 
+    # xstep=.1, ystep=.2, min_w=64, dbg=False):
     xstep=.05, ystep=.2, min_w=64, dbg=False):
     ''' Returns rows of bounding box coords by sliding different size of windows
     for each row.
@@ -124,7 +132,7 @@ def sliding_box_rows(img_shape, ymin=360, ymax=None, max_h=280,
     ymin = ymin if ymin!=None else img_h - max_w
     # ymax = ymax or img_h
     win_w = max_w
-    y = ymin  
+    y = ymin
     y1 = ymin + win_w
     rows = []
 
@@ -164,7 +172,25 @@ def sliding_box_rows(img_shape, ymin=360, ymax=None, max_h=280,
     #         cv2.imwrite('output_images/slide_windows%d.jpg'%i, draw_image)
     return rows
 
-def bound_wins(heatmap, threshold):
+def ymin_ymax(rows):
+    ymin = sys.maxsize
+    ymax = 0
+    for row in rows:
+        y0 = _y0(row[0])
+        y1 = _y1(row[0])
+        if y0 < ymin:
+            ymin = y0
+        if y1 > ymax:
+            ymax = y1
+        y0 = _y0(row[-1])
+        y1 = _y1(row[-1])
+        if y0 < ymin:
+            ymin = y0
+        if y1 > ymax:
+            ymax = y1
+    return ymin, ymax
+
+def bboxes_of_heat(heatmap, threshold):
     ''' Returns bounding boxes of heat areas in heatmap image.
     '''
     filtered_heatmap = npu.threshold(heatmap, threshold)

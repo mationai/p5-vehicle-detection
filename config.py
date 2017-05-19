@@ -2,9 +2,11 @@ from glob import glob
 from os.path import join
 from types import SimpleNamespace as SNS
 
-picklefile = SNS(
-    svc='svc-all3.pkl',
-    X_scaler='Xscaler-all3.pkl',
+pklpath = SNS(
+    svc='svc-all3-hog12-luv.pkl',
+    scaler='scaler-all3-hog12-luv.pkl',
+    # svc='pkls/svc-all3-hog12.pkl',
+    # scaler='pkls/Xscaler-all3-hog12.pkl',
     # svc='svc-nohist.pkl',
     # X_scaler='Xscaler-nohist.pkl',
     # svc='svc-hogonly.pkl',
@@ -15,18 +17,18 @@ cars_imgspath = glob(join(imgspath, 'vehicles', '*/*.png'))
 notcars_imgspath = glob(join(imgspath, 'non-vehicles', '*/*.png'))
 
 default = SNS(
+    # color_space='YCrCb',  # Can be RGB, HSV, LUV, HLS, YUV, YCrCb
     color_space='LUV',  # Can be RGB, HSV, LUV, HLS, YUV, YCrCb
     orient = 12,  # HOG orientations
     pix_per_cell = 8,  # HOG pixels per cell
     cell_per_block = 2,  # HOG cells per block
     hog_channel = 'ALL',  # Can be 0, 1, 2, or "ALL"
+    train_size = (64, 64),  # train image size
     spatial_size = (32, 32),  # Spatial binning dimensions
     hist_bins = 32,  # Number of histogram bins
-    spatial_feat = True,  # Spatial features on or off
-    # spatial_feat = False, # Spatial features on or off
-    hist_feat = True,  # Histogram features on or off
-    # hist_feat = False, # Histogram features on or off
-    hog_feat = True,  # HOG features on or off
+    spatial_feat = True,
+    hist_feat = True,
+    hog_feat = True,
 )
 defaults = {
     'color_space':default.color_space,
