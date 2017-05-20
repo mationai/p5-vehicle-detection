@@ -4,14 +4,25 @@ from toolbox import color_palette as cp
 
 
 font = cv2.FONT_HERSHEY_SIMPLEX
-fontsize = .5
+fontscale = .5
 fontwd = 1
 linetype = cv2.LINE_AA 
 
 
-def rect(img, box, color, thick=2):
+def rect(img, box, color, txt='', thick=2):
     ''' box: ((x0,y0),(x1,y1))
     '''
+    if txt:
+        _w,_h = cv2.getTextSize(txt, font, fontscale, fontwd)[0]
+        wd,ht = int(_w), int(_h)
+        x0 = box[0][0] - (thick-1)
+        y0 = box[0][1] - ht - 4
+        if x0 < 0:
+            x0 = 0
+        if y0 < 0:
+            y0 = 0
+        img[y0:y0+ht+4, x0:x0+wd+8] = color 
+        cv2.putText(img,txt,(x0+4,y0+ht),font,fontscale,(0,0,0),fontwd,linetype)
     return cv2.rectangle(img, box[0], box[1], color, thick)
 
 def heatmap(bboxes, img=None, shape=None):
@@ -38,12 +49,12 @@ def heat_overlay(bboxes, img, overlay=None, color=(255,0,0), alpha=.08):
         out = cv2.addWeighted(overlay, alpha, out, 1-alpha, 0)
     return out
 
-def textrow_ht_y0(fontsize=fontsize):
+def textrow_ht_y0(fontscale=fontscale):
     ''' Returns correct ht for text image rows. Needed as VideoFileClip.fl_image
     fails to write corect video if result ht is odd
     '''
-    ht = 18 + int(fontsize*20)
-    y0 =  9 + int(fontsize*20)
+    ht = 18 + int(fontscale*20)
+    y0 =  9 + int(fontscale*20)
     return (ht, y0)
 
 def boxes(img, bboxes=[], colors=cp.greens, thick=2, return_copy=True):
@@ -77,7 +88,7 @@ def with_btm_win(img, texts, colors=[(255,255,255)]):
     x = 8
     btm = np.zeros((txt_h*len(texts), img_w, 3)).astype(np.uint8)
     for i,txt in enumerate(texts):
-        cv2.putText(btm,txt,(x,y0+(txt_h-2)*i),font,fontsize,colors[i],fontwd,linetype)
+        cv2.putText(btm,txt,(x,y0+(txt_h-2)*i),font,fontscale,colors[i],fontwd,linetype)
     return np.vstack((img, btm))
 
 def side_wins(wins, img_shape, win_shape, titles=[''], wins_cnt=3):
@@ -113,7 +124,7 @@ def side_wins(wins, img_shape, win_shape, titles=[''], wins_cnt=3):
             out.append(np.zeros((win_h, win_w, 3)).astype(np.uint8))
         else:
             out.append(cv2.resize(wins[i],(win_w,win_h),interpolation=cv2.INTER_AREA))
-        cv2.putText(lb_img,titles[i],txtpos,font,fontsize,(0,0,0),fontwd,linetype)
+        cv2.putText(lb_img,titles[i],txtpos,font,fontscale,(0,0,0),fontwd,linetype)
     return np.vstack(out)
 
 def with_debug_wins(img, btm_texts, wins, win_titles, wins_cnt=3):

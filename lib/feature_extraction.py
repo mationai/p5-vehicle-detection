@@ -197,7 +197,7 @@ def bboxes_of_heat(heatmap, threshold, frame, dbg='b'):
     filtered_heatmap = npu.threshold(heatmap, threshold)
     labelsAry, nfeatures = label(filtered_heatmap)
     bboxes = []
-    print('frame',frame, dbg, nfeatures)
+    # print('frame',frame, dbg, nfeatures)
     for i in range(1, nfeatures+1):
         nonzero = (labelsAry==i).nonzero()
         nonzeroy = np.array(nonzero[0])
