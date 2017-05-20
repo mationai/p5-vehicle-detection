@@ -3,10 +3,10 @@ from os.path import join
 from types import SimpleNamespace as SNS
 
 pklpath = SNS(
-    svc='svc-all3-hog12-luv.pkl',
-    scaler='scaler-all3-hog12-luv.pkl',
-    # svc='pkls/svc-all3-hog12.pkl',
-    # scaler='pkls/Xscaler-all3-hog12.pkl',
+    # svc='svc-all3-hog12-luv.pkl',
+    # scaler='scaler-all3-hog12-luv.pkl',
+    svc='pkls/svc-all3-hog12.pkl',
+    scaler='pkls/scaler-all3-hog12.pkl',
     # svc='svc-nohist.pkl',
     # X_scaler='Xscaler-nohist.pkl',
     # svc='svc-hogonly.pkl',

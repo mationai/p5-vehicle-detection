@@ -32,8 +32,8 @@ scaled_X = scaler.transform(X)
 y = np.hstack((np.ones(len(car_features)), np.zeros(len(notcar_features))))
 
 X_train, X_test, y_train, y_test = train_test_split(
-    scaled_X, y, test_size=0.2, random_state=np.random.randint(0,100))
-    # scaled_X, y, test_size=0.2, random_state=1)
+    # scaled_X, y, test_size=0.2, random_state=np.random.randint(0,100))
+    scaled_X, y, test_size=0.2, random_state=123)
 
 print('Using:', default.orient, 'orientations', default.pix_per_cell,
       'pixels per cell and', default.cell_per_block, 'cells per block')

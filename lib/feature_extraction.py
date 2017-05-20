@@ -111,17 +111,13 @@ def next_width(y1, ht, ybase=440, top_w=32, btm_w=360):
     # print(y1, ht, y_ratio,btm_w , top_w, top_w, int(y_ratio*(btm_w - top_w) + top_w))
     return int(y_ratio*(btm_w - top_w) + top_w)
 
-def bbox_rows(img_shape, ymin=360, ymax=None, max_h=330, 
-# def sliding_box_rows(img_shape, ymin=None, ymax=None, max_h=.5, 
-    # xstep=.1, ystep=.2, min_w=64, dbg=False):
-    xstep=.05, ystep=.2, min_w=80, dbg=False):
+def bbox_rows(img_shape, ymin=360, max_h=330, xstep=.05, ystep=.2, min_w=80):
     ''' Returns rows of bounding box coords by sliding different size of windows
     for each row.
     Application is for vehicle detection, thus smaller windows row is near middle
     of image and no rows of same size is repeated.
 
     ymin: windows y start
-    ymax: None = image ht
     xstep, ystep: % of win_w
     min_w: min window wd in pxs
     max_h: max window ht in % of imght if <= 1, in pxs otherwise
@@ -131,46 +127,16 @@ def bbox_rows(img_shape, ymin=360, ymax=None, max_h=330,
     img_h, img_w = img_shape[:2]
     max_w = int(max_h*img_h) if 0<=max_h<=1 else int(max_h) 
     ymin = ymin if ymin!=None else img_h - max_w
-    # ymax = ymax or img_h
     win_w = max_w
     y = ymin
     y1 = ymin + win_w
     rows = []
 
     while (win_w >= min_w):
-        row = horizontal_bboxes(win_w, xstep, y, img_w)
-        # if dbg: print('wd:', win_w, 'len', len(row), 'y', y)
-
-        rows.append(row)
+        rows.append(horizontal_bboxes(win_w, xstep, y, img_w))
         y1 -= int(win_w * ystep)
         win_w = next_width(y1, img_h)
         y = y1 - win_w
-
-    # if dbg:
-    #     by_wds = np.array(strips_shifts).T
-    #     for by_wd in by_wds:
-    #         win0 = by_wd[0][0]
-    #         print('\nwidth %d:' % win0[1][0])
-    #         for s in by_wd:
-    #             for win in s:
-    #                 print(win)
-    #     colors = [
-    #      (0,255,0),
-    #      (0,215,0),
-    #      (0,175,0),
-    #      (0,135,0),
-    #      (0,100,0),
-    #      (0,70,0),
-    #      (0,40,0),
-    #      (0,10,0),
-    #     ]
-    #     for i,shift in enumerate(strips_shifts):
-    #         draw_image = np.zeros(img_shape)
-    #         # print(len(shift),'\n',i)
-    #         for j,stripe in enumerate(shift):
-    #             draw_image = draw_boxes(draw_image, stripe, colors[j])
-    #         # cv2.imshow('shifted_collection', draw_image)
-    #         cv2.imwrite('output_images/slide_windows%d.jpg'%i, draw_image)
     return rows
 
 def ymin_ymax(rows):
@@ -191,13 +157,12 @@ def ymin_ymax(rows):
             ymax = y1
     return ymin, ymax
 
-def bboxes_of_heat(heatmap, threshold, frame, dbg='b'):
+def bboxes_of_heat(heatmap, threshold):
     ''' Returns bounding boxes of heat areas in heatmap image.
     '''
     filtered_heatmap = npu.threshold(heatmap, threshold)
     labelsAry, nfeatures = label(filtered_heatmap)
     bboxes = []
-    # print('frame',frame, dbg, nfeatures)
     for i in range(1, nfeatures+1):
         nonzero = (labelsAry==i).nonzero()
         nonzeroy = np.array(nonzero[0])
