@@ -5,7 +5,7 @@ import numpy as np
 import cv2, string
 from lib import np_util as npu
 from lib import feature_extraction as fe
-from lib.helpers import _x0,_x1,_y0,_y1,_wd
+from lib.helpers import _x0,_x1,_y0,_y1,_wd,_ht
 from toolbox import draw
 
 
@@ -20,7 +20,7 @@ def find_hot_boxes(img, box_rows, model, color_space='RGB',
     '''
     result = []
     img = npu.RGBto(color_space, img)
-    ymin, ymax = fe.ymin_ymax(box_rows)
+    ymin, ymax = fe.ybounds_bbox_rows(box_rows)
     wins_cnt=0
 
     if hog_feat:
@@ -111,11 +111,22 @@ class Car():
         if _x1(b) > self.x1:
             self.x1 = _x1(b)
 
-    def overlaps(self, b, div_by=3):
-        l = self.wd//div_by
-        x0 = self.x0
-        x1 = self.x1
-        return x0-l <= _x0(b) <= x0+l and x1-l <= _x1(b) <= x1+l
+    def pop_win(self):
+        if self.x0 == _x0(self.wins[0]):
+            self.x0 = np.min([_x0(self.wins[i]) for i in range(1, len(self.wins))])
+        if self.x1 == _x1(self.wins[0]):
+            self.x1 = np.max([_x1(self.wins[i]) for i in range(1, len(self.wins))])
+        self.wins.pop(0)
+        self.nwins[0] -= 1
+
+    def overlaps(self, b):
+        l1 = self.wd//4
+        l2 = self.wd//2
+        return (self.x0-l1 <= _x0(b) <= self.x0+l1) and _x1(b) <= self.x1+l2
+
+    def overlap_all(self, b):
+        l = self.wd//3
+        return (self.x0-l <= _x0(b) <= self.x0+l) and _wd(b) >= self.wd*1.5
 
     def empty_frames(self, cnt):
         for i in range(-cnt, 0):
@@ -133,8 +144,8 @@ class Car():
         j = 0
         for cnt in self.nwins:
             if cnt:
-                wds = [str(_wd(self.wins[i])) for i in range(j, j+cnt)]
-                s += ('%dx'%cnt)+','.join(wds)+', '
+                widths = [str(_wd(self.wins[i])) for i in range(j, j+cnt)]
+                s += ('%dx'%cnt)+','.join(widths)+','
                 j += cnt
             else:
                 s += '0,'
@@ -145,24 +156,25 @@ class Car():
         return self.label+': x0=%d, wd=%d'%(self.x0, self.wd)
 
 class CarDetector():
-    def __init__(self, model, img_wd):
+    def __init__(self, model, img_shape):
         self.rows = None
         self.cars = []
         self.model = model
         self.frame = 0
         self.icar = -1
         self.iheat = -1
-        self.max_carwd = img_wd//3
+        self.max_carwd = img_shape[1]//3
+        self.iffy_carht = img_shape[0]//3
 
     def find_hot_wins(self, img):
         ''' Returns bounding windows of heats in img
         '''
         if self.rows==None:
-            self.rows = fe.bbox_rows(img.shape, dbg=True)
+            self.rows = fe.bbox_rows(img.shape)
         dbg_img = np.copy(img)
         hot_boxes = find_hot_boxes(img, self.rows, self.model, **self.model.defaults)
         heatmap = draw.heatmap(hot_boxes, shape=img.shape)
-        hot_wins = fe.bboxes_of_heat(heatmap, threshold=1)
+        hot_wins = fe.bboxes_of_heat(heatmap, threshold=3) #1 bad on prob10
         dbg_img = draw.heat_overlay(hot_boxes, dbg_img)
         for win in hot_wins:
             dbg_img = draw.rect(dbg_img, win, (0,255,0))
@@ -199,27 +211,33 @@ class CarDetector():
 
         dbg_img = np.copy(img)
         new_wins = self.find_hot_wins(img)
-        len_raw_new_wins = len(new_wins)
+        new_wins_b4 = len(new_wins)
         self.move_to_cars(new_wins)
-        self.side_txts.append('Added to cars. box=added')
+        self.side_txts.append('Cars to addd. heat=candidate box=added')
 
         new_cars = []
         added_to = []
-        too_wide = 0
+        too_big = []
         if new_wins: # For those not removed, group them into as little number 
             # of cars as possible
             for win in new_wins:
-                if _wd(win) > self.max_carwd:
-                    too_wide += 1
+                if (_wd(win) > self.max_carwd) or\
+                   (_ht(win) > self.iffy_carht and _ht(win) > _wd(win)):
+                    too_big.append('?')
                     continue
 
                 found = True
-                for car in new_cars: 
+                for newcar in new_cars: 
                 # loop won't run on first iteration as new_cars is empty.
-                    if car.overlaps(win):
-                        car.add(win)
-                        if car.label not in added_to:
-                            added_to.append(car.label)
+                    if newcar.overlap_all(win):
+                        if newcar.label not in too_big:
+                            too_big.append(newcar.label)
+                        found = False
+                        break
+                    elif newcar.overlaps(win):
+                        newcar.add(win)
+                        if newcar.label not in added_to:
+                            added_to.append(newcar.label)
                         found = False
                         break
                 if found:
@@ -234,10 +252,15 @@ class CarDetector():
         else:
             self.dbg_wins.append(npu.crop(img, **dbg.crop))
 
-        self.btm_txts.append('%d removed - wider than %d'%(too_wide, self.max_carwd))
-        self.btm_txts.append('%d removed - added to win of cars: %s' % (
-            (len_raw_new_wins - len(new_wins), ', '.join(added_to))))
-        # self.btm_txts.append('%d removed as its the only heat' % (len_raw_new_wins - len(new_cars)))
+        big_cnt = len(too_big)
+        moved_cnt = new_wins_b4 - len(new_wins) - big_cnt
+        total = moved_cnt + big_cnt
+        strs = []
+        if too_big:
+            strs.append('%d > 1.5 times width of %s'%(len(too_big), ', '.join(too_big)))
+        if moved_cnt:
+            strs.append('%d added to wins of detected%s'%(moved_cnt, ', '.join(added_to)))
+        self.btm_txts.append('%d removed: %s'%(total, ', '.join(strs)))
         self.btm_txts.append('%d cars added: %s' % (len(new_cars), cars_coords_str(new_cars)))
         self.btm_txts.append("car wins cnt: "+cars_wins_str(self.cars))
 
@@ -245,17 +268,21 @@ class CarDetector():
         purged = []
         for i,car in enumerate(self.cars):
             # purge oldest frame
-            if car.nframes > 9:
+            if car.nframes > 15:
                 while car.nwins[0] and car.wins:
-                    car.wins.pop(0)
-                    car.nwins[0] -= 1
+                    car.pop_win()
                 car.nwins.pop(0)
 
             # purge non-cars
             empty_cnt = 0
-            if (3 <= car.nframes <= 5 and car.empty_frames(3)) or \
-               (6 == car.nframes and car.empty_frames(4)) or \
-               (7 <= car.nframes and car.empty_frames(5)):
+            ## perfect prob9, bad prob10:
+            # if (3 <= car.nframes <= 5 and car.empty_frames(3)) or\
+            #    (6 == car.nframes and car.empty_frames(4)) or\
+            #    (7 <= car.nframes and car.empty_frames(5)):
+            if (3 <= car.nframes <= 5 and car.empty_frames(3)) or\
+               (12 <= car.nframes and car.empty_frames(10)):
+               # (10 <= car.nframes and car.empty_frames(8)):
+            # no need for (6 == car.nframes and car.empty_frames(4)) .. 9 and (7) btw first and last check
                 self.cars.pop(i)
                 purged.append(car.label)
         self.btm_txts.append('%d cars purged: %s'%(len(purged), ', '.join(purged)))
@@ -271,8 +298,8 @@ class CarDetector():
             if len(car.wins) > 1:
                 heatmap = draw.heatmap(car.wins, shape=img.shape)
                 wins_of_wins = None
-                threshold = 7
-                while not wins_of_wins and threshold > 5:
+                threshold = 5
+                while not wins_of_wins and threshold > 3:
                     wins_of_wins = fe.bboxes_of_heat(heatmap, threshold)
                     threshold -= 1
                 if len(wins_of_wins) > 1:
@@ -284,4 +311,4 @@ class CarDetector():
 
         self.dbg_wins.append(npu.crop(dbg_img, **dbg.crop))
         self.side_txts.append('detected cars')
-        return draw.with_debug_wins(out, self.btm_txts, self.dbg_wins, self.side_txts, dbg.wins_cnt)
+        return draw.with_debug_wins(out, self.btm_txts, self.dbg_wins, self.side_txts, dbg.wins_cnt, {4:2})

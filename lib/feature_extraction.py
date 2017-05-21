@@ -1,5 +1,5 @@
 import numpy as np
-import cv2, sys
+import cv2
 from skimage.feature import hog
 from scipy.ndimage.measurements import label
 from lib import np_util as npu
@@ -139,23 +139,26 @@ def bbox_rows(img_shape, ymin=360, max_h=330, xstep=.05, ystep=.2, min_w=80):
         y = y1 - win_w
     return rows
 
-def ymin_ymax(rows):
-    ymin = sys.maxsize
-    ymax = 0
-    for row in rows:
-        y0 = _y0(row[0])
-        y1 = _y1(row[0])
-        if y0 < ymin:
-            ymin = y0
-        if y1 > ymax:
-            ymax = y1
-        y0 = _y0(row[-1])
-        y1 = _y1(row[-1])
-        if y0 < ymin:
-            ymin = y0
-        if y1 > ymax:
-            ymax = y1
-    return ymin, ymax
+def ybounds_bbox_rows(rows):
+    y0s = [min(_y0(row[0]), _y0(row[-1])) for row in rows]
+    y1s = [max(_y1(row[0]), _y1(row[-1])) for row in rows]
+    return np.min(y0s), np.max(y1s)
+    # ymin = sys.maxsize
+    # ymax = 0
+    # for row in rows:
+    #     y0 = _y0(row[0])
+    #     y1 = _y1(row[0])
+    #     if y0 < ymin:
+    #         ymin = y0
+    #     if y1 > ymax:
+    #         ymax = y1
+    #     y0 = _y0(row[-1])
+    #     y1 = _y1(row[-1])
+    #     if y0 < ymin:
+    #         ymin = y0
+    #     if y1 > ymax:
+    #         ymax = y1
+    # return ymin, ymax
 
 def bboxes_of_heat(heatmap, threshold):
     ''' Returns bounding boxes of heat areas in heatmap image.
