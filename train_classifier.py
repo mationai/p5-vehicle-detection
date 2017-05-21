@@ -17,6 +17,13 @@ from lib import feature_extraction as fe
 # all3    11 - .9868  9636
 # all3    10 - .989   9048
 
+# Using: 10 orientations 8 pixels per cell and 2 cells per block
+# Feature vector length: 9048
+# 149.49 Seconds to train SVC...
+# Test Accuracy of SVC =  0.9938
+# SVC prediction: [ 1.  0.  0.  0.  0.  0.  1.  0.  1.  1.]
+# Actual labels:  [ 1.  0.  0.  0.  0.  0.  1.  0.  1.  1.]
+
 cars = [img for img in cars_imgspath]
 notcars = [img for img in notcars_imgspath]
 
@@ -57,7 +64,3 @@ sample = random.sample(range(len(y_test)), n_predict)
 clf = joblib.load(pklpath.svc)
 print('SVC prediction:', clf.predict(X_test[sample]))
 print('Actual labels: ', y_test[sample])
-# with open(picklefile.svc, 'wb') as file:
-#     pickle.dump(svc, file, protocol=pickle.HIGHEST_PROTOCOL)
-# with open(picklefile.X_scaler, 'wb') as file:
-#     pickle.dump(X_scaler, file, protocol=pickle.HIGHEST_PROTOCOL)

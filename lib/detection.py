@@ -74,7 +74,7 @@ dbg = SNS(
     crop = { # these work with 4,6,7 lines of btm text, but not 5
         'top':350,
         'btm':30,
-        'left':60,
+        'left':0,
         'right':0,
     },
     wins_cnt = 3,
@@ -167,6 +167,7 @@ class CarDetector():
         self.max_carwd = img_shape[1]//3
         self.min_carwd = 64
         self.iffy_carht = img_shape[0]//3
+        self.maxframes = 15
 
     def find_hot_wins(self, img):
         ''' Returns bounding windows of heats in img
@@ -176,7 +177,7 @@ class CarDetector():
         dbg_img = np.copy(img)
         hot_boxes = find_hot_boxes(img, self.rows, self.model, **self.model.defaults)
         heatmap = draw.heatmap(hot_boxes, shape=img.shape)
-        hot_wins = fe.bboxes_of_heat(heatmap, threshold=3) #1 bad on prob10
+        hot_wins = fe.bboxes_of_heat(heatmap, threshold=2) #1 bad on prob10
         dbg_img = draw.heat_overlay(hot_boxes, dbg_img)
         for win in hot_wins:
             dbg_img = draw.rect(dbg_img, win, (0,255,0))
@@ -229,7 +230,7 @@ class CarDetector():
                 if (_wd(win) > self.max_carwd) or\
                    (_wd(win) < self.min_carwd) or\
                    (_ht(win) > self.iffy_carht and _ht(win) > _wd(win)):
-                    bad_size.append('?')
+                    bad_size.append(str(_wd(win)))
                     continue
 
                 found = True
@@ -271,7 +272,7 @@ class CarDetector():
         purged = []
         for i,car in enumerate(self.cars):
             # purge oldest frame
-            if car.nframes > 15:
+            if car.nframes > self.maxframes:
                 while car.nwins[0] and car.wins:
                     car.pop_win()
                 car.nwins.pop(0)
@@ -283,8 +284,8 @@ class CarDetector():
             #    (6 == car.nframes and car.empty_frames(4)) or\
             #    (7 <= car.nframes and car.empty_frames(5)):
             if (3 <= car.nframes <= 5 and car.empty_frames(3)) or\
-               (12 <= car.nframes and car.empty_frames(10)):
-               # (10 <= car.nframes and car.empty_frames(8)):
+               (10 <= car.nframes and car.empty_frames(8)):
+               # (12 <= car.nframes and car.empty_frames(10)): # decent
             # no need for (6 == car.nframes and car.empty_frames(4)) .. 9 and (7) btw first and last check
                 self.cars.pop(i)
                 purged.append('%s(%d)'%(car.label,car.lifetime))
@@ -295,26 +296,44 @@ class CarDetector():
 
         out = np.copy(img)
         dbg_img = np.copy(img)
+        min_thres = 3
 
         for i,car in enumerate(self.cars):
-            if len(car.wins) > 1:
+            if len(car.wins) > min_thres:
                 heatmap = draw.heatmap(car.wins, shape=img.shape)
                 wins_of_wins = None
                 threshold = 5
-                while not wins_of_wins and threshold > 3:
+                while not wins_of_wins and threshold > min_thres:
                     wins_of_wins = fe.bboxes_of_heat(heatmap, threshold)
                     threshold -= 1
+
                 if not wins_of_wins:
                     continue
+
                 if len(wins_of_wins) > 1:
                     self.cars.pop(i)
                     purged.append('%s(disjoint wins)'%car.label)
                     continue
+
                 win = wins_of_wins[0]
-                if _wd(win) < self.min_carwd:
+                wd, ht = _wd(win), _ht(win)
+                frames_is_max = car.nframes >= self.maxframes
+
+                if wd < self.min_carwd and not frames_is_max:
                     self.cars.pop(i)
-                    purged.append('%s(too small)'%car.label)
+                    purged.append('%s(sml,w=%d)'%(car.label,wd))
                     continue
+                if ht > wd and not frames_is_max:
+                    self.cars.pop(i)
+                    purged.append('%s(narrow,h=%d > w=%d)'%(car.label,ht,wd))
+                    continue
+                if ht >= self.iffy_carht and not frames_is_max:
+                    self.cars.pop(i)
+                    purged.append('%s(big,h=%d)'%(car.label,ht))
+                    continue
+
+                if ht >= wd*1.5 and frames_is_max:
+                    win[1][1] = _y0(win) + wd
                 out = draw.rect(out, win, (0,255,0), car.label)
                 dbg_img = draw.rect(dbg_img, win, _color(i), car.label)
                 dbg_img = draw.heat_overlay(car.wins, dbg_img)

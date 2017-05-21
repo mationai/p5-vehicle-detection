@@ -24,10 +24,10 @@ def process_image(img):
 # run_video = False
 # run_video = './test1.mp4'
 # run_video = './prob6.mp4'  #ffmpeg -i project_video.mp4 -ss 00:00:13 -codec copy -t 6 prob6.mp4
-run_video = './prob8.mp4'  #ffmpeg -i project_video.mp4 -ss 00:00:38.4 -codec copy -t 8 prob8.mp4
+# run_video = './prob8.mp4'  #ffmpeg -i project_video.mp4 -ss 00:00:38.4 -codec copy -t 8 prob8.mp4
 # run_video = './prob9.mp4'  #ffmpeg -i project_video.mp4 -ss 00:00:10.8 -codec copy -t 9 prob9.mp4
 # run_video = './prob10.mp4' #ffmpeg -i project_video.mp4 -ss 00:00:22.8 -codec copy -t 10 prob10.mp4
-# run_video = './project_video.mp4'
+run_video = './project_video.mp4'
     
 if run_video:
     video_output = './outputvid.mp4'
