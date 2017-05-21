@@ -20,12 +20,10 @@ def find_hot_boxes(img, box_rows, model, color_space='RGB',
     '''
     result = []
     img = npu.RGBto(color_space, img)
-    ymin, ymax = fe.ybounds_bbox_rows(box_rows)
     wins_cnt=0
 
     if hog_feat:
-        # hog_roi_feats = fe.hog_features(img[ymin:ymax,:,:], orient,
-        #     pix_per_cell, cell_per_block, hog_channel, feature_vec=False)
+        # Tried img[360:] "ValueError: operands could not be broadcast together with shapes...",
         hog_img_feats = fe.hog_features(img, orient, pix_per_cell, cell_per_block, 
             hog_channel, feature_vec=False)
 
@@ -35,7 +33,7 @@ def find_hot_boxes(img, box_rows, model, color_space='RGB',
             test_img = cv2.resize(img[b.y0:b.y1, b.x0:b.x1], model.train_size)
             if hog_feat:
                 x0 = b.x0//pix_per_cell
-                y0 = b.y0//pix_per_cell
+                y0 = b.y0//pix_per_cell # - 360 if hog_roi_feats works
                 wd = test_img.shape[1]//pix_per_cell - (cell_per_block-1) 
                 hog_feats = hog_img_feats[:, y0:y0+wd, x0:x0+wd].ravel()
 
@@ -94,6 +92,7 @@ class Car():
         self.wins = [b]
         self.nwins = [1]
         self.label = car_labels[ilabel%len(car_labels)]
+        self.lifetime = 1
 
     @property
     def wd(self):
@@ -111,6 +110,10 @@ class Car():
         if _x1(b) > self.x1:
             self.x1 = _x1(b)
 
+    def new_frame(self):
+        self.nwins.append(0)
+        self.lifetime += 1
+
     def pop_win(self):
         if self.x0 == _x0(self.wins[0]):
             self.x0 = np.min([_x0(self.wins[i]) for i in range(1, len(self.wins))])
@@ -120,13 +123,12 @@ class Car():
         self.nwins[0] -= 1
 
     def overlaps(self, b):
-        l1 = self.wd//4
-        l2 = self.wd//2
-        return (self.x0-l1 <= _x0(b) <= self.x0+l1) and _x1(b) <= self.x1+l2
-
-    def overlap_all(self, b):
         l = self.wd//3
-        return (self.x0-l <= _x0(b) <= self.x0+l) and _wd(b) >= self.wd*1.5
+        return self.x0-l <= _x0(b) <= self.x0+l
+
+    def overlap_by(self, b):
+        l = self.wd//3
+        return self.x1-l <= _x1(b) <= self.x1+l
 
     def empty_frames(self, cnt):
         for i in range(-cnt, 0):
@@ -144,12 +146,11 @@ class Car():
         j = 0
         for cnt in self.nwins:
             if cnt:
-                widths = [str(_wd(self.wins[i])) for i in range(j, j+cnt)]
-                s += ('%dx'%cnt)+','.join(widths)+','
+                s += '%d,'%_wd(self.wins[j]) if cnt==1 else '%d,'%cnt
                 j += cnt
             else:
                 s += '0,'
-        return self.label+':'+s
+        return self.label+'('+s[:-1]+')'
 
     @property
     def coords_str(self):
@@ -164,6 +165,7 @@ class CarDetector():
         self.icar = -1
         self.iheat = -1
         self.max_carwd = img_shape[1]//3
+        self.min_carwd = 64
         self.iffy_carht = img_shape[0]//3
 
     def find_hot_wins(self, img):
@@ -190,14 +192,17 @@ class CarDetector():
                 # Any heat bbox from new_heats will be moved to car.wins if condition checks. 
         # Note this loop won't run on 1st frame as self.cars is empty. 
         # "if new_heats" below will add cars to it if found
+        moved = 0
         for car in self.cars:
             for i in range(len(hot_wins))[::-1]: # reverse needed, else "index out of range" after pop()
                 # print(car.x0, box.x1, car.x1, box.x0, car.boxwd*1.5 , box.wd)
                 # len(hot_wins)>i shouldn't be needed, but "index out of range"...
                 #  in 7% of prob6.mp4 and frame 9 of prob9.mp4
-                if car.overlaps(hot_wins[i]):
+                if car.overlaps(hot_wins[i]) or car.overlap_by(hot_wins[i]):
                 # if len(hot_wins)>i and car.overlaps(hot_wins[i]):
                     car.add(hot_wins.pop(i))
+                    moved += 1
+        return moved
 
     @property
     def next_icar(self):
@@ -205,39 +210,39 @@ class CarDetector():
         return self.icar
         
     def detect(self, img):
-        self.cars = sorted(self.cars, key=lambda car: car.x0)#, reverse=True)
+        # self.cars = sorted(self.cars, key=lambda car: car.x0)#, reverse=True)
         for car in self.cars:
-            car.nwins.append(0)
+            car.new_frame()
 
         dbg_img = np.copy(img)
         new_wins = self.find_hot_wins(img)
         new_wins_b4 = len(new_wins)
-        self.move_to_cars(new_wins)
+        moved_cnt = self.move_to_cars(new_wins)
         self.side_txts.append('Cars to addd. heat=candidate box=added')
 
         new_cars = []
         added_to = []
-        too_big = []
+        bad_size = []
         if new_wins: # For those not removed, group them into as little number 
             # of cars as possible
             for win in new_wins:
                 if (_wd(win) > self.max_carwd) or\
+                   (_wd(win) < self.min_carwd) or\
                    (_ht(win) > self.iffy_carht and _ht(win) > _wd(win)):
-                    too_big.append('?')
+                    bad_size.append('?')
                     continue
 
                 found = True
                 for newcar in new_cars: 
                 # loop won't run on first iteration as new_cars is empty.
-                    if newcar.overlap_all(win):
-                        if newcar.label not in too_big:
-                            too_big.append(newcar.label)
-                        found = False
-                        break
-                    elif newcar.overlaps(win):
-                        newcar.add(win)
-                        if newcar.label not in added_to:
-                            added_to.append(newcar.label)
+                    if newcar.overlaps(win): # overlap_by not needed as new_cars are x0 ordered
+                        if _wd(win) >= newcar.wd*1.5:
+                            if newcar.label not in bad_size:
+                                bad_size.append(newcar.label)
+                        else:
+                            newcar.add(win)
+                            if newcar.label not in added_to:
+                                added_to.append(newcar.label)
                         found = False
                         break
                 if found:
@@ -252,17 +257,15 @@ class CarDetector():
         else:
             self.dbg_wins.append(npu.crop(img, **dbg.crop))
 
-        big_cnt = len(too_big)
-        moved_cnt = new_wins_b4 - len(new_wins) - big_cnt
-        total = moved_cnt + big_cnt
+        total = moved_cnt + len(bad_size)
         strs = []
-        if too_big:
-            strs.append('%d > 1.5 times width of %s'%(len(too_big), ', '.join(too_big)))
+        if bad_size:
+            strs.append('%d bad size, widths are %s'%(len(bad_size), ', '.join(bad_size)))
         if moved_cnt:
             strs.append('%d added to wins of detected%s'%(moved_cnt, ', '.join(added_to)))
         self.btm_txts.append('%d removed: %s'%(total, ', '.join(strs)))
         self.btm_txts.append('%d cars added: %s' % (len(new_cars), cars_coords_str(new_cars)))
-        self.btm_txts.append("car wins cnt: "+cars_wins_str(self.cars))
+        self.btm_txts.append("car wins (width): "+cars_wins_str(self.cars))
 
     def purge(self):
         purged = []
@@ -284,12 +287,11 @@ class CarDetector():
                # (10 <= car.nframes and car.empty_frames(8)):
             # no need for (6 == car.nframes and car.empty_frames(4)) .. 9 and (7) btw first and last check
                 self.cars.pop(i)
-                purged.append(car.label)
-        self.btm_txts.append('%d cars purged: %s'%(len(purged), ', '.join(purged)))
+                purged.append('%s(%d)'%(car.label,car.lifetime))
+        return purged
 
-    def detected_image(self, img):
-        self.detect(img)
-        self.purge()
+    def final_purge_and_processed_image(self, img, purged):
+    #     self.cars = sorted(self.cars, key=lambda car: car.wd)#, reverse=True)
 
         out = np.copy(img)
         dbg_img = np.copy(img)
@@ -302,13 +304,27 @@ class CarDetector():
                 while not wins_of_wins and threshold > 3:
                     wins_of_wins = fe.bboxes_of_heat(heatmap, threshold)
                     threshold -= 1
+                if not wins_of_wins:
+                    continue
                 if len(wins_of_wins) > 1:
-                    self.btm_txts[0] += ' MULTIPLE (non-overlapping?) wins for car-'+car.label
-                for win in wins_of_wins:
-                    out = draw.rect(out, win, (0,255,0), car.label)
-                    dbg_img = draw.rect(dbg_img, win, _color(i), car.label)
+                    self.cars.pop(i)
+                    purged.append('%s(disjoint wins)'%car.label)
+                    continue
+                win = wins_of_wins[0]
+                if _wd(win) < self.min_carwd:
+                    self.cars.pop(i)
+                    purged.append('%s(too small)'%car.label)
+                    continue
+                out = draw.rect(out, win, (0,255,0), car.label)
+                dbg_img = draw.rect(dbg_img, win, _color(i), car.label)
                 dbg_img = draw.heat_overlay(car.wins, dbg_img)
 
+        self.btm_txts.append('%d cars purged (lifetime/reason): %s'%(len(purged), ', '.join(purged)))
         self.dbg_wins.append(npu.crop(dbg_img, **dbg.crop))
         self.side_txts.append('detected cars')
-        return draw.with_debug_wins(out, self.btm_txts, self.dbg_wins, self.side_txts, dbg.wins_cnt, {4:2})
+        return draw.with_debug_wins(out, self.btm_txts, self.dbg_wins, self.side_txts, dbg.wins_cnt, {4:3})
+
+    def detected_image(self, img):
+        self.detect(img)
+        return self.final_purge_and_processed_image(img, self.purge())
+

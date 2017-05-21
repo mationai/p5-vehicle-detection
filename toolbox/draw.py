@@ -78,29 +78,31 @@ def boxes_list(img, bboxeslist=[], palette=cp.palette, thick=2, return_copy=True
         boxes(out, bboxes, palette[i%colorslen], thick=thick, return_copy=False) 
     return out
 
-def with_btm_win(img, texts, i_linescnt_map=None, colors=[(255,255,255)]):
+def with_btm_win(img, texts, i_cnt_map=None, colors=[(255,255,255)]):
     ''' Returns stacked image of img and texts stacked vertically
+    i_cnt_map: dict of iline:nlines that needs > 1 line
     ''' 
     img_h, img_w = img.shape[:2]
     if len(colors)==1 and len(texts) > 1:
         colors *= len(texts) 
     txt_h, y0 = textrow_ht_y0()
     x = 8
-    btm = np.zeros((txt_h*len(texts), img_w, 3)).astype(np.uint8)
-    # xtras = np.sum(list(i_linescnt_map.values())) - len(i_linescnt_map) if i_linescnt_map else 0
-    # totlines = len(texts) + xtras 
+    xtras = np.sum(list(i_cnt_map.values())) - len(i_cnt_map) if i_cnt_map else 0
+    totlines = len(texts) + xtras
+    btm = np.zeros((txt_h*totlines, img_w, 3)).astype(np.uint8)
 
     for i,txt in enumerate(texts):
-        if i in i_linescnt_map:
-          nlines = i_linescnt_map[i]
+        if i in i_cnt_map:
+          nlines = i_cnt_map[i]
           if cv2.getTextSize(txt,font,fontscale,fontwd)[0][0] > img_w:
             maxchars = len(txt)//nlines +1
             jends = [maxchars*k for k in range(1, nlines)]
-            jends.append(maxchars)
+            jends.append(len(txt))
             txts = [txt[j*maxchars:jends[j]] for j in range(nlines)]
             for j,_txt in enumerate(txts):
                 cv2.putText(btm,_txt,(x,y0+(txt_h-2)*i),font,fontscale,colors[i],fontwd,linetype)
                 y0 += txt_h-2
+            y0 -= txt_h-2
           else:
             cv2.putText(btm,txt,(x,y0+(txt_h-2)*i),font,fontscale,colors[i],fontwd,linetype)
             for j in range(nlines-1):
@@ -146,8 +148,8 @@ def side_wins(wins, img_shape, win_shape, titles=[''], wins_cnt=3):
         cv2.putText(lb_img,titles[i],txtpos,font,fontscale,(0,0,0),fontwd,linetype)
     return np.vstack(out)
 
-def with_debug_wins(img, btm_texts, wins, win_titles, wins_cnt=3, i_linescnt_map=None):
-    main = with_btm_win(img, btm_texts, i_linescnt_map)
+def with_debug_wins(img, btm_texts, wins, win_titles, wins_cnt=3, i_cnt_map=None):
+    main = with_btm_win(img, btm_texts, i_cnt_map)
     win_shape = wins[0].shape if wins else img.shape
     side = side_wins(wins, main.shape, win_shape, win_titles, wins_cnt)
     # print(main.shape, side.shape)
