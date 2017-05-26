@@ -20,7 +20,6 @@ The goals / steps of this project are the following:
 [img8]: ./output_images/singleimage-pipeline.jpg
 [img9]: ./output_images/frame-262-Q.jpg
 [img10]: ./output_images/frame-266-Q-gone.jpg
-[video1]: ./project_video.mp4
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/513/view) Points
 
@@ -122,7 +121,7 @@ The training is done in `train.py`. The model is saved as file specified in `con
 
 #### 1. Describe how (and identify where in your code) you implemented a sliding window search.  How did you decide what scales to search and how much to overlap windows?
 
-First, positioning of where the windows will slide needs to be determined. Windows, especially smaller ones can not be slided across the screen as doing so can take up to an hour to process just one second of video. The observation that the cars vanish toward a vanishing point and that point is near the center of the screen.
+First, positioning of where the windows will slide needs to be determined. Windows, especially smaller ones can not be slided across the screen as doing so can take up to an hour to process just one second of video. The observation is that cars vanish toward a vanishing point and that point is near the center of the screen.
 
 Once this point, or more specifically this horizontal line is determined, it is easy to visualize that the smallest windows will slide horizontally centered along this line and that the same window size does not need to be slided any further up or down from this vertical position. The next deduction is that the next window size up will need to be slided slightly more down vertically than up.
 
