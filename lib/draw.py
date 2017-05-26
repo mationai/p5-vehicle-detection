@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from toolbox import color_palette as cp
+from lib import color_palette as cp
 
 
 font = cv2.FONT_HERSHEY_SIMPLEX
@@ -9,8 +9,10 @@ fontwd = 1
 linetype = cv2.LINE_AA 
 
 
-def rect(img, box, color, txt='', thick=2):
-    ''' box: ((x0,y0),(x1,y1))
+def rect(img, box, color=(0,255,0), txt='', thick=2):
+    ''' Returns result of cv2.rectangle()
+    box: ((x0,y0),(x1,y1)) - box[0] and [1] are passed to cv2.rectangle
+    txt: text label to be drawn on top left of box
     '''
     if txt:
         _w,_h = cv2.getTextSize(txt, font, fontscale, fontwd)[0]
@@ -49,18 +51,10 @@ def heat_overlay(bboxes, img, overlay=None, color=(255,0,0), alpha=.08):
         out = cv2.addWeighted(overlay, alpha, out, 1-alpha, 0)
     return out
 
-def textrow_ht_y0(fontscale=fontscale):
-    ''' Returns correct ht for text image rows. Needed as VideoFileClip.fl_image
-    fails to write corect video if result ht is odd
-    '''
-    ht = 18 + int(fontscale*20)
-    y0 =  9 + int(fontscale*20)
-    return (ht, y0)
-
 def boxes(img, bboxes=[], colors=cp.greens, thick=2, return_copy=True):
     ''' Returns img with boxes drawn 
     bboxes: list of bounding box coords
-    thick: line thickness
+    thick:  line thickness
     '''
     out = np.copy(img) if return_copy else img
     colorslen = len(colors)
@@ -77,6 +71,16 @@ def boxes_list(img, bboxeslist=[], palette=cp.palette, thick=2, return_copy=True
         j = i%colorslen
         boxes(out, bboxes, palette[i%colorslen], thick=thick, return_copy=False) 
     return out
+
+
+## Debug windows
+def textrow_ht_y0(fontscale=fontscale):
+    ''' Returns correct ht for text image rows. Needed as VideoFileClip.fl_image
+     fails to write corect video if result ht is odd
+    '''
+    ht = 18 + int(fontscale*20)
+    y0 =  9 + int(fontscale*20)
+    return (ht, y0)
 
 def with_btm_win(img, texts, i_cnt_map=None, colors=[(255,255,255)]):
     ''' Returns stacked image of img and texts stacked vertically
@@ -114,8 +118,8 @@ def with_btm_win(img, texts, i_cnt_map=None, colors=[(255,255,255)]):
 
 def side_wins(wins, img_shape, win_shape, titles=[''], wins_cnt=3):
     ''' Returns a vertically stacked image of up to maximgs reduced versions of wins.
-    wins: images to be resized and vertically stacked, can be empty [].
-    titles: text titles for the wins. Can be a list of single title for all wins. 
+    wins:      images to be resized and vertically stacked, can be empty [].
+    titles:    text titles for the wins. Can be a list of single title for all wins. 
     img_shape: shape of main image. Its ht will be the ht of stacked images.
     win_shape: shape of win images before size reduction.
     ''' 
@@ -149,6 +153,8 @@ def side_wins(wins, img_shape, win_shape, titles=[''], wins_cnt=3):
     return np.vstack(out)
 
 def with_debug_wins(img, btm_texts, wins, win_titles, wins_cnt=3, i_cnt_map=None):
+    ''' Returns image with bottom and side windows added to img 
+    '''
     main = with_btm_win(img, btm_texts, i_cnt_map)
     win_shape = wins[0].shape if wins else img.shape
     side = side_wins(wins, main.shape, win_shape, win_titles, wins_cnt)

@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 from lib import feature_extraction as fe
 from lib import np_util as npu 
-from toolbox import draw
+from lib import draw
 
 image = cv2.imread('test_images/test1.jpg')
 shape = image.shape

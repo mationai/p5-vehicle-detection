@@ -3,19 +3,6 @@ import cv2
 from types import SimpleNamespace as SNS
 from skimage import feature as skFeat
 
-greens = [
-    (0,255,0),
-    (0,210,0),
-    (0,175,0),
-    (0,150,0),
-    (0,125,0),
-    (0,100,0),
-    (0,80,0),
-    (0,60,0),
-    (0,45,0),
-    (0,30,0),
-    (0,0,0),
-]
 
 def scale_255(M):
     return np.uint8(255*M/np.max(M))
@@ -29,10 +16,12 @@ def crop(img, top=0, btm=0, left=0, right=0):
         # img is a PIL object
         w,h = img.size[:2]
         return img.crop((left, top, w-10, h-10))
+
     elif hasattr(img, 'shape'):
         # img is a numpy array, eg. via cv2.imread()
         h,w = img.shape[:2]
         return img[top:h-btm, left:w-right]
+
     else:
         raise ValueError('img type '+type(img)+' not expect')
 
@@ -129,4 +118,3 @@ def images_features(imgspath,
         img = BGRto(color_space, cv2.imread(imgpath))
         ret.append(image_features(img, spatial_size, hist_bins, hist_ranges, hog_params))
     return ret
-

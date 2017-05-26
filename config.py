@@ -5,14 +5,14 @@ from types import SimpleNamespace as SNS
 pklpath = SNS(
     svc='svc-all3-hog12-luv.pkl',
     scaler='scaler-all3-hog12-luv.pkl',
-    # svc='pkls/svc-all3-hog12.pkl',
-    # scaler='pkls/scaler-all3-hog12.pkl',
 )
 imgspath = '../data'
 cars_imgspath = glob(join(imgspath, 'vehicles', '*/*.png'))
 notcars_imgspath = glob(join(imgspath, 'non-vehicles', '*/*.png'))
 
 default = SNS(
+    # color_space='YCrCb',  # Can be RGB, HSV, LUV, HLS, YUV, YCrCb(tried, not good)
+    # orient = 10,  # HOG orientations, 10 misses much more than 12
     color_space='LUV',  # Can be RGB, HSV, LUV, HLS, YUV, YCrCb(tried, not good)
     orient = 12,  # HOG orientations, 10 misses much more than 12
     pix_per_cell = 8,  # HOG pixels per cell
