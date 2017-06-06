@@ -55,7 +55,8 @@ def hog_features(img, orient=9, pix_per_cell=8, cell_per_block=2, hog_channel=0,
                                         vis=vis, feature_vec=feature_vec)
 
 def hog_vis(img, orient=9, pix_per_cell=8, cell_per_block=2, hog_channel=None):
-    ''' hog_channel of:
+    ''' Returns hog visualization image. 
+    hog_channel of:
     'ALL' gives best highlight vis
     None  will return grayscale image
     0-2   will return that channel

@@ -10,7 +10,8 @@ from config import pklpath, defaults, default, cars_imgspath, notcars_imgspath
 from lib import feature_extraction as fe
 
 
-save_model = False
+save_model = True
+# save_model = False
 test_prediction_from_saved_model = False
 
 t = time.time()

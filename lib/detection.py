@@ -161,6 +161,24 @@ class Car():
     def coords_str(self):
         return self.label+': x0=%d, wd=%d'%(self.x0, self.wd)
 
+def defaults_info(defaults):
+    l = []
+    abrv = {
+        'color_space':' cs:',
+        'orient':' ori:',
+        'pix_per_cell':' px/c:',
+        'cell_per_block':' c/blk:',
+        'hog_channel':' hog:',
+        # 'spatial_size':' sp.size:', # spatial size tuple, need surrounding (,)
+        'hist_bins':' bins:',
+        'spatial_feat':' do sp:',
+        'hist_feat':' do hist:',
+    }
+    for k,v in defaults.items():
+        if k in abrv:
+            l.append(abrv[k]+'%s'%v)
+    return ' '.join(l)
+
 class CarDetector():
     def __init__(self, model, img_shape):
         self.rows = None
@@ -178,10 +196,11 @@ class CarDetector():
         ''' Returns bounding windows of heats in img
             Updates self.dbg_wins and self.dbg_txts
         '''
+        defaults = self.model.defaults
         if self.rows==None:
             self.rows = fe.bbox_rows(img.shape)
         dbg_img = np.copy(img)
-        hot_boxes = find_hot_boxes(img, self.rows, self.model, **self.model.defaults)
+        hot_boxes = find_hot_boxes(img, self.rows, self.model, **defaults)
         heatmap = draw.heatmap(hot_boxes, shape=img.shape)
         hot_wins = fe.bboxes_of_heat(heatmap, threshold=2) #1 bad on prob10
         dbg_img = draw.heat_overlay(hot_boxes, dbg_img)
@@ -190,7 +209,7 @@ class CarDetector():
 
         self.dbg_wins = [npu.crop(dbg_img, **dbg.crop)]
         self.side_txts = ['New heats. box=window of heats']
-        self.btm_txts = ['Frame %d'%self.frame]
+        self.btm_txts = ['Frame %d. Params: %s'%(self.frame, defaults_info(defaults))]
         self.btm_txts.append('%d new heatmap windows of %s'%(len(hot_wins), coords_gen(hot_wins))) 
         self.frame += 1
         return hot_wins

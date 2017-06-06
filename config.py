@@ -3,8 +3,10 @@ from os.path import join
 from types import SimpleNamespace as SNS
 
 pklpath = SNS(
-    svc='svc-all3-hog12-luv.pkl',
-    scaler='scaler-all3-hog12-luv.pkl',
+    svc='models/svc-all3-hog12-luv.pkl',
+    scaler='models/scaler-all3-hog12-luv.pkl',
+    # svc='models/svc.pkl',
+    # scaler='models/scaler.pkl',
 )
 imgspath = '../data'
 cars_imgspath = glob(join(imgspath, 'vehicles', '*/*.png'))

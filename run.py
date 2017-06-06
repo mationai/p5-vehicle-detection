@@ -21,14 +21,13 @@ detector = CarDetector(model, (720,1280))
 def process_image(img):
     return detector.detected_image(img)
 
-video_in = False
-# video_in = './test1.mp4'
-# video_in = './test_video.mp4'
-# video_in = './prob6.mp4'  #ffmpeg -i project_video.mp4 -ss 00:00:13 -codec copy -t 6 prob6.mp4
-# video_in = './prob8.mp4'  #ffmpeg -i project_video.mp4 -ss 00:00:38.4 -codec copy -t 8 prob8.mp4
-# video_in = './prob9.mp4'  #ffmpeg -i project_video.mp4 -ss 00:00:10.8 -codec copy -t 9 prob9.mp4
-# video_in = './prob10.mp4' #ffmpeg -i project_video.mp4 -ss 00:00:22.8 -codec copy -t 10 prob10.mp4
-# video_in = './project_video.mp4'
+# video_in = False
+# video_in = 'video-in/test1.mp4'
+# video_in = 'video-in/prob6.mp4'  #ffmpeg -i project_video.mp4 -ss 00:00:13 -codec copy -t 6 prob6.mp4
+# video_in = 'video-in/prob8.mp4'  #ffmpeg -i project_video.mp4 -ss 00:00:38.4 -codec copy -t 8 prob8.mp4
+# video_in = 'video-in/prob9.mp4'  #ffmpeg -i project_video.mp4 -ss 00:00:10.8 -codec copy -t 9 prob9.mp4
+# video_in = 'video-in/prob10.mp4' #ffmpeg -i project_video.mp4 -ss 00:00:22.8 -codec copy -t 10 prob10.mp4
+video_in = 'video-in/project_video.mp4'
     
 if video_in:
     video_out = './outputvid.mp4'
