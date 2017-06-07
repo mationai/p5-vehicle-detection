@@ -9,7 +9,7 @@ The goals of this [project](https://github.com/udacity/CarND-Vehicle-Detection) 
 - Estimate a bounding box for vehicles detected
 
 [//]: # (Image References)
-[img1]: examples/car_not_car.png
+[img1]: assets/car_not_car.png
 [img2]: assets/hog9.jpg
 [img3]: assets/hog10.jpg
 [img4]: assets/hog11.jpg
