@@ -172,7 +172,7 @@ Edit `run.py` to specify the video_in file to run pipeline on video. Set it to F
 ---
 ### Output Video 
 
-[![](assets/project-out-preview720.jpg)](https://youtu.be/LN3GFfKQf1A "Vehicle Detection Project Output (Udacity sdcnd P5)")
+[![](assets/project-out-preview720.png)](https://youtu.be/LN3GFfKQf1A "Vehicle Detection Project Output (Udacity sdcnd P5)")
 
 
 ---
