@@ -51,7 +51,7 @@ Histogram of Oriented Gradients (HOG) features is used to extract features to id
 Exploration of different color spaces and `skimage.hog()` parameters (`orientations`, `pixels_per_cell`, and `cells_per_block`) are in table below.
 Various few combinations of parameters have been tried and here are the results.
 
-| Color Space | Spatial Bins | Color Hist Bins | HOG Orientations | Pixs/Cell, Cells/Blk | Feature Vector Len | Test Accuracies (best if rand seed) | Result |
+| Color Space | Spatial Bins | Color Hist Bins | HOG Orientations | Pixs/Cell, Cells/Blk | Feature Vector Len | Test Accuracies | Result |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | LUV | (32,32)| 32 | 12 | 8,2 | 10224 | 0.993 | |
 | LUV | (32,32)| 32 | 10 | 8,2 | 9048 | 0.9941 | Lots more false positives and non detects|
