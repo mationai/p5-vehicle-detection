@@ -65,27 +65,22 @@ Overall it seems LUV 12 orientations gives the best result. I was not able to se
 
 Here is an example of one of each of the `vehicle` and `non-vehicle` classes:
 
+*Car and Not Car*
 ![][img1]
-
-*Fig 1. Car and Not Car*
 
 Here is a visualization of different HOG orientations  
 
+*HOG Orientation=9*
 ![][img2]
 
-*Fig 2. HOG Orientation=9*
-
+*HOG Orientation=10*
 ![][img3]
 
-*Fig 3. HOG Orientation=10*
-
+*HOG Orientation=11*
 ![][img4]
 
-*Fig 4. HOG Orientation=11*
-
+*HOG Orientation=12*
 ![][img5]
-
-*Fig 5. HOG Orientation=12*
 
 
 ---
@@ -103,9 +98,8 @@ The `xstep` is the number of steps within a window in the x direction. I start o
 
 To visualize these windows, `draw_sliding_windows.py` is created to draw them overlaying test1.jpg. Below is the result.
 
+*Sliding windows*
 ![][img6]
-
-*Fig 6. Sliding windows*
 
 `find_hot_wins` method in `detection.py` is where `bbox_rows` is called to find cars With these sliding windows. Boxes of heat that overlap will generate bounding windows of overlap heats. These windows are where cars may be found.  
 
@@ -119,15 +113,13 @@ This window is matched against all existing cars to see if it can be group with 
 
 The last window is a threshold of window of windows associated with the car. More on this below.
 
+*Frame 656 Pipeline*
 ![][img7]
-
-*Fig 7. Frame 656 Pipeline*
 
 Here's one where the pipeline is ran on a single image. Since there are no previous car found, the second image shows that the hot windows are added as new detections.
 
+*Pipeline on Single Image*
 ![][img8]
-
-*Fig 8. Pipeline on Single Image*
 
 
 ---
@@ -154,15 +146,13 @@ False positives filtering is done in as follows in `detection.py`:
 
 Here is an example of false position in action
 
+*Frame 262 - possible car 'Q' detected*
 ![][img9]
-
-*Fig 9. Frame 262 - possible car 'Q' detected*
 
 The possible car 'Q' removed due to 3 consecutive empty frames while its lifetime frames is only 5.
 
+*Frame 266 - possible car 'Q' removed*
 ![][img10]
-
-*Fig 10. Frame 266 - possible car 'Q' removed*
 
 ---
 ### How to Run
